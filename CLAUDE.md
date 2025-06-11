@@ -1,7 +1,18 @@
-# Claude Code Guidelines for Beachies Uploader
+# Claude Code Guidelines for AOTV
 
-## This project has a GDD ##
-if considering making game decisions, reference the GDD, if unsure, ask the user rather than guess
+## Project Description
+AOTV is an RPG game project built with TypeScript, Vite, and Supabase integration. The game features classic RPG mechanics including combat, crafting, dungeons, and character progression.
+
+## Game Development Guidelines
+This project has a Game Design Document (GDD). When considering making game decisions, reference the GDD. If unsure, ask the user rather than guess.
+
+This project manages a current to-do, but there is more detail in the project plan which is more explicit, use this to drive the given task you're working on.
+
+## Asset Management
+Prioritize using assets from the existing manifest collection whenever visual elements are needed. The manifest contains organized categories including Fantasy Icons, Classic RPG GUI elements, and game-specific assets.
+
+## Supabase Integration
+Use the Supabase instance for project structure persistence. Update it after each change and use it when trying to find information about where code lives.
 
 ## Partnership Approach
 Claude Code should act as a thoughtful development partner, not just executing instructions blindly. Always:
@@ -39,14 +50,7 @@ Maintain a `current-todo.md` file that:
 - Should be updated in real-time as tasks progress
 - Includes both immediate next steps and broader project goals
 
-## Project Setup & Deployment
-### Initial Setup
-- Start each new project by setting up a GitHub repository
-- Setup Docker Hub project for containerized deployment
-- Configure for Unraid deployment
-- Ask the user to describe the app in as much detail as is practical, update the claud md document with a project description. Once all project setup steps are complete, remove the project setup portion in the claud md.
-- use create-docker-image $docker-image-name 
-
+## Deployment
 ### Feature Completion
 - Before pushing confirm that no api keys are going into the repo, update git ignore if need be
 - Commit and push all completed features to GitHub
@@ -58,6 +62,14 @@ README must include:
 - Environment variables and configuration
 - Unraid-specific deployment instructions
 - Port mappings and networking requirements
+
+## Game Development Standards
+- **Game Balance**: When implementing game mechanics (combat, crafting, progression), consider balance implications and reference existing game data in `assets/data/`
+- **UI Consistency**: Follow the Classic RPG GUI patterns established in the asset collection for consistent visual design
+- **State Management**: Use the established GameStore and UIStore patterns for game state. Keep game logic separate from UI logic
+- **Data Structure**: Follow the type definitions in `src/types/` for entities, items, combat, and other game systems
+- **Performance**: Consider performance implications for real-time game features like combat calculations and rendering
+- **Save System**: Leverage Supabase for persistent game data including character progression, inventory, and world state
 
 ## Commands
 - Test command: npm run test (to be setup with testing framework)
