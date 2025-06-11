@@ -1,0 +1,25 @@
+{
+  "name": "loot-and-craft",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.0.0",
+    "workbox-window": "^7.3.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "mobx": "^6.13.7",
+    "mobx-react-lite": "^4.1.0"
+  }
+}
