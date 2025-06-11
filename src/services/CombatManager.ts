@@ -1,0 +1,701 @@
+// Combat Manager - State machine for turn-based combat system
+
+import { makeObservable, observable, action, computed } from 'mobx';
+import {
+  CombatManager as ICombatManager,
+  PlayerAction,
+  AttackAction,
+  BlockAction,
+  ToggleAbilityAction,
+  MoveAction,
+  EscapeAction,
+  DamageCalculation,
+  CombatLogEntry,
+  DamageRecord,
+  CombatInitParams,
+  CombatResult,
+  DefeatPenaltyResult
+} from '../types/combat';
+import { Entity, Player, Enemy, CombatParticipant } from '../types/entities';
+import { Item, KeyModifier } from '../types/items';
+import { EntityId, DamageInstance } from '../types/base';
+import { 
+  CombatState, 
+  CombatAction, 
+  RangeState, 
+  DamageType, 
+  EffectTrigger,
+  DurationUnit 
+} from '../types/enums';
+import { EffectProcessor, EffectFactory } from './EffectProcessor';
+import { Player as PlayerImpl, Enemy as EnemyImpl } from './Entity';
+
+export class CombatManager implements ICombatManager {
+  // State machine
+  currentState: CombatState;
+  participants: CombatParticipant[];
+  player: PlayerImpl;
+  enemies: EnemyImpl[];
+  
+  // Combat settings
+  keyModifiers: KeyModifier[];
+  dungeonTier: number;
+  
+  // Turn management
+  currentTurn: number;
+  currentParticipantIndex: number;
+  turnOrder: EntityId[];
+  
+  // Range states
+  rangeStates: Map<EntityId, RangeState>;
+  
+  // Combat history
+  combatLog: CombatLogEntry[];
+  damageHistory: DamageRecord[];
+  
+  // Systems
+  private effectProcessor: EffectProcessor;
+  private pendingPlayerAction?: PlayerAction;
+  private combatStartTime: number;
+
+  constructor(params: CombatInitParams) {
+    makeObservable(this, {
+      currentState: observable,
+      participants: observable,
+      currentTurn: observable,
+      currentParticipantIndex: observable,
+      turnOrder: observable,
+      rangeStates: observable,
+      combatLog: observable,
+      damageHistory: observable,
+      advanceState: action,
+      setState: action,
+      executePlayerAction: action,
+      executeEnemyAction: action
+    });
+
+    this.player = params.player as PlayerImpl;
+    this.enemies = params.enemies as EnemyImpl[];
+    this.dungeonTier = params.dungeonTier;
+    this.keyModifiers = params.keyModifiers;
+    
+    this.currentState = CombatState.INITIALIZING;
+    this.currentTurn = 1;
+    this.currentParticipantIndex = 0;
+    this.turnOrder = [];
+    this.participants = [];
+    this.rangeStates = new Map();
+    this.combatLog = [];
+    this.damageHistory = [];
+    this.combatStartTime = Date.now();
+    
+    this.effectProcessor = new EffectProcessor();
+    
+    this.initializeCombat();
+  }
+
+  private initializeCombat(): void {
+    this.addLogEntry('Combat begins!', 'system');
+    
+    // Apply key modifiers to enemies
+    this.applyKeyModifiersToEnemies();
+    
+    // Set up participants
+    this.participants = [
+      this.createParticipant(this.player),
+      ...this.enemies.map(enemy => this.createParticipant(enemy))
+    ];
+    
+    // Initialize range states
+    this.initializeRangeStates();
+    
+    // Advance to initiative rolling
+    this.setState(CombatState.ROLL_INITIATIVE);
+  }
+
+  private createParticipant(entity: Entity): CombatParticipant {
+    return {
+      entity,
+      turnOrder: 0,
+      hasActed: false,
+      canMove: true,
+      canAttack: true,
+      canUseAbilities: true,
+      damageThisTurn: 0,
+      healingThisTurn: 0,
+      effectsAppliedThisTurn: []
+    };
+  }
+
+  private initializeRangeStates(): void {
+    // Set initial range states based on weapon types
+    this.rangeStates.set(this.player.id, this.getInitialRangeForEntity(this.player));
+    
+    for (const enemy of this.enemies) {
+      this.rangeStates.set(enemy.id, this.getInitialRangeForEntity(enemy));
+    }
+    
+    // Handle bow user advantage (per GDD)
+    this.handleBowAdvantage();
+  }
+
+  private getInitialRangeForEntity(entity: Entity): RangeState {
+    // Default to in range, but this could be determined by weapon type
+    // Ranged vs ranged should start in range per GDD
+    return RangeState.IN_RANGE;
+  }
+
+  private handleBowAdvantage(): void {
+    // Per GDD: If bow user faces melee enemy, enemy uses first turn to close distance
+    const playerHasBow = this.playerHasBowWeapon();
+    const hasEnemyMelee = this.enemies.some(enemy => this.isEnemyMelee(enemy));
+    
+    if (playerHasBow && hasEnemyMelee) {
+      this.addLogEntry('Bow user advantage: Melee enemies must close distance first', 'system');
+      // This will be handled in enemy AI when they select actions
+    }
+  }
+
+  private playerHasBowWeapon(): boolean {
+    const weapon = this.player.equipment.weapon;
+    return weapon?.equipment?.baseType === 'bow';
+  }
+
+  private isEnemyMelee(enemy: Enemy): boolean {
+    // This would check enemy weapon type or attack pattern
+    return true; // Simplified for now
+  }
+
+  private applyKeyModifiersToEnemies(): void {
+    for (const modifier of this.keyModifiers) {
+      if (modifier.effects.enemyHealthMultiplier) {
+        this.enemies.forEach(enemy => {
+          enemy.baseStats.maxHealth = Math.floor(
+            enemy.baseStats.maxHealth * modifier.effects.enemyHealthMultiplier!
+          );
+          enemy.currentHealth = enemy.baseStats.maxHealth;
+        });
+      }
+      
+      if (modifier.effects.enemyDamageMultiplier) {
+        this.enemies.forEach(enemy => {
+          enemy.baseStats.damage = Math.floor(
+            enemy.baseStats.damage * modifier.effects.enemyDamageMultiplier!
+          );
+        });
+      }
+    }
+  }
+
+  // State machine implementation
+  advanceState(): void {
+    switch (this.currentState) {
+      case CombatState.INITIALIZING:
+        this.setState(CombatState.ROLL_INITIATIVE);
+        break;
+        
+      case CombatState.ROLL_INITIATIVE:
+        this.rollInitiative();
+        this.setState(CombatState.PLAYER_TURN_START);
+        break;
+        
+      case CombatState.PLAYER_TURN_START:
+        this.processPlayerTurnStart();
+        this.setState(CombatState.PLAYER_ACTION_SELECT);
+        break;
+        
+      case CombatState.PLAYER_ACTION_SELECT:
+        // Wait for player input - action will advance state
+        break;
+        
+      case CombatState.PLAYER_ACTION_RESOLVE:
+        this.resolvePlayerAction();
+        this.setState(CombatState.ENEMY_TURN_START);
+        break;
+        
+      case CombatState.ENEMY_TURN_START:
+        this.processEnemyTurnStart();
+        this.setState(CombatState.ENEMY_INTENT);
+        break;
+        
+      case CombatState.ENEMY_INTENT:
+        this.generateEnemyIntents();
+        this.setState(CombatState.ENEMY_ACTION_RESOLVE);
+        break;
+        
+      case CombatState.ENEMY_ACTION_RESOLVE:
+        this.resolveEnemyActions();
+        this.setState(CombatState.BETWEEN_TURNS);
+        break;
+        
+      case CombatState.BETWEEN_TURNS:
+        this.processBetweenTurns();
+        this.setState(CombatState.CHECK_VICTORY);
+        break;
+        
+      case CombatState.CHECK_VICTORY:
+        if (this.checkVictory()) {
+          this.setState(CombatState.COMBAT_END);
+        } else {
+          this.setState(CombatState.CHECK_DEFEAT);
+        }
+        break;
+        
+      case CombatState.CHECK_DEFEAT:
+        if (this.checkDefeat()) {
+          this.setState(CombatState.COMBAT_END);
+        } else {
+          this.nextTurn();
+          this.setState(CombatState.PLAYER_TURN_START);
+        }
+        break;
+        
+      case CombatState.COMBAT_END:
+        this.endCombat();
+        this.setState(CombatState.LOOT_DISTRIBUTION);
+        break;
+        
+      case CombatState.LOOT_DISTRIBUTION:
+        this.distributeLoot();
+        // Combat is complete
+        break;
+    }
+  }
+
+  setState(newState: CombatState): void {
+    if (this.canTransition(this.currentState, newState)) {
+      this.currentState = newState;
+      this.addLogEntry(`Combat state: ${newState}`, 'system');
+    }
+  }
+
+  canTransition(fromState: CombatState, toState: CombatState): boolean {
+    // Define valid state transitions
+    const validTransitions: { [key in CombatState]: CombatState[] } = {
+      [CombatState.INITIALIZING]: [CombatState.ROLL_INITIATIVE],
+      [CombatState.ROLL_INITIATIVE]: [CombatState.PLAYER_TURN_START],
+      [CombatState.PLAYER_TURN_START]: [CombatState.PLAYER_ACTION_SELECT],
+      [CombatState.PLAYER_ACTION_SELECT]: [CombatState.PLAYER_ACTION_RESOLVE],
+      [CombatState.PLAYER_ACTION_RESOLVE]: [CombatState.ENEMY_TURN_START],
+      [CombatState.ENEMY_TURN_START]: [CombatState.ENEMY_INTENT],
+      [CombatState.ENEMY_INTENT]: [CombatState.ENEMY_ACTION_RESOLVE],
+      [CombatState.ENEMY_ACTION_RESOLVE]: [CombatState.BETWEEN_TURNS],
+      [CombatState.BETWEEN_TURNS]: [CombatState.CHECK_VICTORY],
+      [CombatState.CHECK_VICTORY]: [CombatState.CHECK_DEFEAT, CombatState.COMBAT_END],
+      [CombatState.CHECK_DEFEAT]: [CombatState.PLAYER_TURN_START, CombatState.COMBAT_END],
+      [CombatState.COMBAT_END]: [CombatState.LOOT_DISTRIBUTION],
+      [CombatState.LOOT_DISTRIBUTION]: []
+    };
+    
+    return validTransitions[fromState].includes(toState);
+  }
+
+  // Player action execution
+  async executePlayerAction(action: PlayerAction): Promise<void> {
+    if (this.currentState !== CombatState.PLAYER_ACTION_SELECT) {
+      throw new Error('Cannot execute player action in current state');
+    }
+    
+    if (!action.isValid) {
+      this.addLogEntry(`Invalid action: ${action.invalidReason}`, 'system');
+      return;
+    }
+    
+    this.pendingPlayerAction = action;
+    this.setState(CombatState.PLAYER_ACTION_RESOLVE);
+  }
+
+  // Enemy action execution
+  async executeEnemyAction(enemy: EnemyImpl): Promise<void> {
+    const intent = enemy.selectIntent();
+    enemy.executeIntent([this.player, ...this.enemies]);
+    
+    this.addLogEntry(`${enemy.name} ${intent.description}`, 'action', enemy.id);
+  }
+
+  // Range management
+  getRange(entityId1: EntityId, entityId2: EntityId): RangeState {
+    // For simplicity, use the attacker's range state
+    return this.rangeStates.get(entityId1) || RangeState.IN_RANGE;
+  }
+
+  changeRange(entityId: EntityId, newRange: RangeState): void {
+    this.rangeStates.set(entityId, newRange);
+    this.addLogEntry(`${entityId} changed range to ${newRange}`, 'action');
+  }
+
+  // Victory/defeat checking
+  checkVictory(): boolean {
+    return this.enemies.every(enemy => enemy.currentHealth <= 0);
+  }
+
+  checkDefeat(): boolean {
+    return this.player.currentHealth <= 0;
+  }
+
+  // Loot generation
+  generateLoot(): Item[] {
+    // This would be implemented with the ItemFactory
+    // For now, return empty array
+    return [];
+  }
+
+  applyKeyModifiers(loot: Item[]): Item[] {
+    // Apply key modifiers that affect loot
+    for (const modifier of this.keyModifiers) {
+      if (modifier.effects.lootTierBonus) {
+        // Upgrade loot tiers
+      }
+      if (modifier.effects.lootQuantityMultiplier) {
+        // Multiply loot quantity
+      }
+    }
+    return loot;
+  }
+
+  // Private state processing methods
+  private rollInitiative(): void {
+    const allEntities = [this.player, ...this.enemies];
+    
+    // Calculate initiative for each entity
+    const initiatives = allEntities.map(entity => ({
+      id: entity.id,
+      initiative: entity.computedStats.initiative + Math.random() * 20
+    }));
+    
+    // Sort by initiative (highest first)
+    initiatives.sort((a, b) => b.initiative - a.initiative);
+    
+    this.turnOrder = initiatives.map(i => i.id);
+    this.addLogEntry('Initiative order determined', 'system');
+  }
+
+  private processPlayerTurnStart(): void {
+    // Process turn start effects
+    this.effectProcessor.processEffects(
+      EffectTrigger.TURN_START,
+      { targetId: this.player.id, sourceId: this.player.id },
+      this.effectProcessor.getEffects(this.player.id)
+    );
+    
+    // Reset player action flags
+    this.player.canAct = true;
+    this.player.clearTemporaryEffects();
+    
+    this.addLogEntry('Your turn begins', 'system');
+  }
+
+  private resolvePlayerAction(): void {
+    if (!this.pendingPlayerAction) return;
+    
+    const action = this.pendingPlayerAction;
+    
+    switch (action.type) {
+      case CombatAction.ATTACK:
+        this.executeAttackAction(action as AttackAction);
+        break;
+      case CombatAction.BLOCK:
+        this.executeBlockAction(action as BlockAction);
+        break;
+      case CombatAction.TOGGLE_ABILITY:
+        this.executeToggleAbilityAction(action as ToggleAbilityAction);
+        break;
+      case CombatAction.MOVE:
+        this.executeMoveAction(action as MoveAction);
+        break;
+      case CombatAction.ESCAPE:
+        this.executeEscapeAction(action as EscapeAction);
+        break;
+    }
+    
+    this.pendingPlayerAction = undefined;
+  }
+
+  private executeAttackAction(action: AttackAction): void {
+    const target = this.enemies.find(e => e.id === action.targetId);
+    if (!target) return;
+    
+    // Calculate damage
+    const damage = this.calculateDamage(this.player, target, action.weaponUsed);
+    
+    // Apply damage
+    const wasAlive = target.takeDamage(damage.finalDamage);
+    
+    // Record damage
+    this.recordDamage(this.player.id, target.id, damage);
+    
+    if (!wasAlive) {
+      this.addLogEntry(`${target.name} is defeated!`, 'damage');
+    }
+  }
+
+  private executeBlockAction(action: BlockAction): void {
+    // Apply block effect exactly per GDD
+    this.player.tempStatModifiers.armor = this.player.computedStats.armor; // Double current armor
+    
+    const blockEffect = EffectFactory.createBlock({ sourceId: this.player.id });
+    this.player.addEffect(blockEffect);
+    
+    this.addLogEntry('You raise your guard, doubling armor and reducing damage by 25%', 'action');
+  }
+
+  private executeToggleAbilityAction(action: ToggleAbilityAction): void {
+    // Toggle ability on/off
+    this.addLogEntry(`Toggled ${action.abilityId} ${action.newState ? 'on' : 'off'}`, 'action');
+  }
+
+  private executeMoveAction(action: MoveAction): void {
+    this.changeRange(this.player.id, action.newRangeState);
+  }
+
+  private executeEscapeAction(action: EscapeAction): void {
+    if (Math.random() < action.successChance) {
+      this.addLogEntry('Successfully escaped from combat!', 'system');
+      this.setState(CombatState.COMBAT_END);
+    } else {
+      this.addLogEntry('Failed to escape!', 'system');
+    }
+  }
+
+  private processEnemyTurnStart(): void {
+    for (const enemy of this.enemies.filter(e => e.currentHealth > 0)) {
+      // Process turn start effects for each enemy
+      this.effectProcessor.processEffects(
+        EffectTrigger.TURN_START,
+        { targetId: enemy.id, sourceId: enemy.id },
+        this.effectProcessor.getEffects(enemy.id)
+      );
+      
+      enemy.clearTemporaryEffects();
+    }
+  }
+
+  private generateEnemyIntents(): void {
+    for (const enemy of this.enemies.filter(e => e.currentHealth > 0)) {
+      const intent = enemy.selectIntent();
+      this.addLogEntry(`${enemy.name} intends to ${intent.description}`, 'system');
+    }
+  }
+
+  private resolveEnemyActions(): void {
+    for (const enemy of this.enemies.filter(e => e.currentHealth > 0)) {
+      this.executeEnemyAction(enemy);
+    }
+  }
+
+  private processBetweenTurns(): void {
+    // Advance effect durations
+    this.effectProcessor.advanceDurations(EffectTrigger.TURN_END);
+    this.effectProcessor.cleanupExpiredEffects();
+    
+    // Process any end-of-turn effects
+    for (const entity of [this.player, ...this.enemies]) {
+      this.effectProcessor.processEffects(
+        EffectTrigger.TURN_END,
+        { targetId: entity.id, sourceId: entity.id },
+        this.effectProcessor.getEffects(entity.id)
+      );
+    }
+  }
+
+  private nextTurn(): void {
+    this.currentTurn++;
+    this.addLogEntry(`Turn ${this.currentTurn}`, 'system');
+  }
+
+  private endCombat(): void {
+    if (this.checkVictory()) {
+      this.addLogEntry('Victory! All enemies defeated.', 'system');
+    } else if (this.checkDefeat()) {
+      this.addLogEntry('Defeat! You have been overcome.', 'system');
+      this.applyDefeatPenalties();
+    }
+  }
+
+  private distributeLoot(): void {
+    if (this.checkVictory()) {
+      const loot = this.generateLoot();
+      const modifiedLoot = this.applyKeyModifiers(loot);
+      
+      // Add loot to player inventory
+      for (const item of modifiedLoot) {
+        if (this.player.addToInventory(item)) {
+          this.addLogEntry(`Found: ${item.name}`, 'system');
+        }
+      }
+    }
+  }
+
+  private applyDefeatPenalties(): void {
+    // Per GDD: lose key, lose backpack items, chance to lose equipped item
+    const penalties: DefeatPenaltyResult = {
+      keyLost: true, // Always lose the key
+      backpackItemsLost: [...this.player.inventory.items], // Lose all backpack items
+      penaltyMessages: [],
+      totalValueLost: 0
+    };
+    
+    // Clear backpack
+    this.player.inventory.items = [];
+    penalties.penaltyMessages.push('All items in your backpack are lost');
+    
+    // Chance to lose equipped item (high risk per GDD)
+    const equippedItemLossChance = 0.25; // 25% chance, to be tuned
+    if (Math.random() < equippedItemLossChance) {
+      const equippedItems = this.player.equipment.getAllEquipped();
+      if (equippedItems.length > 0) {
+        const randomItem = equippedItems[Math.floor(Math.random() * equippedItems.length)];
+        penalties.equippedItemLost = randomItem;
+        penalties.penaltyMessages.push(`Lost equipped item: ${randomItem.name}`);
+        
+        // Remove from equipment (implementation would need to find and clear the slot)
+      }
+    }
+    
+    for (const message of penalties.penaltyMessages) {
+      this.addLogEntry(message, 'system');
+    }
+  }
+
+  // Damage calculation
+  private calculateDamage(attacker: Entity, target: Entity, weapon?: Item): DamageCalculation {
+    const baseDamage = attacker.computedStats.damage + (weapon?.equipment?.inherentStats.damage || 0);
+    
+    // Hit calculation
+    const hitRoll = Math.random() * 100;
+    const hitChance = attacker.computedStats.accuracy || 85;
+    const hitSuccess = hitRoll <= hitChance;
+    
+    if (!hitSuccess) {
+      return {
+        attacker,
+        target,
+        baseDamage,
+        damageType: DamageType.PHYSICAL,
+        rawDamage: baseDamage,
+        hitRoll,
+        hitSuccess: false,
+        criticalRoll: 0,
+        criticalSuccess: false,
+        finalDamage: 0,
+        armorReduction: 0,
+        resistanceReduction: 0,
+        dodgeRoll: 0,
+        dodgeSuccess: false,
+        blockReduction: 0,
+        damageDealt: 0,
+        healthDamage: 0,
+        energyShieldDamage: 0,
+        onHitEffects: [],
+        statusesApplied: [],
+        showCritical: false,
+        showDodge: false,
+        showBlock: false,
+        combatMessage: 'Attack missed!'
+      };
+    }
+    
+    // Critical calculation
+    const criticalRoll = Math.random() * 100;
+    const criticalChance = attacker.computedStats.criticalChance || 5;
+    const criticalSuccess = criticalRoll <= criticalChance;
+    
+    let finalDamage = baseDamage;
+    if (criticalSuccess) {
+      finalDamage *= 2; // Double damage on crit
+    }
+    
+    // Armor reduction
+    const armorReduction = Math.floor(target.computedStats.armor * 0.5); // Simplified armor calculation
+    finalDamage = Math.max(1, finalDamage - armorReduction);
+    
+    return {
+      attacker,
+      target,
+      baseDamage,
+      damageType: DamageType.PHYSICAL,
+      rawDamage: baseDamage,
+      hitRoll,
+      hitSuccess,
+      criticalRoll,
+      criticalSuccess,
+      finalDamage,
+      armorReduction,
+      resistanceReduction: 0,
+      dodgeRoll: 0,
+      dodgeSuccess: false,
+      blockReduction: 0,
+      damageDealt: finalDamage,
+      healthDamage: finalDamage,
+      energyShieldDamage: 0,
+      onHitEffects: [],
+      statusesApplied: [],
+      showCritical: criticalSuccess,
+      showDodge: false,
+      showBlock: false,
+      combatMessage: criticalSuccess ? `Critical hit for ${finalDamage} damage!` : `Hit for ${finalDamage} damage`
+    };
+  }
+
+  private recordDamage(attackerId: EntityId, targetId: EntityId, damage: DamageCalculation): void {
+    const record: DamageRecord = {
+      turn: this.currentTurn,
+      attackerId,
+      targetId,
+      damage: {
+        amount: damage.baseDamage,
+        type: damage.damageType,
+        source: attackerId
+      },
+      finalDamage: damage.finalDamage,
+      wasCritical: damage.criticalSuccess,
+      wasBlocked: damage.showBlock,
+      wasDodged: damage.dodgeSuccess,
+      timestamp: Date.now()
+    };
+    
+    this.damageHistory.push(record);
+    this.addLogEntry(damage.combatMessage, 'damage', attackerId);
+  }
+
+  private addLogEntry(message: string, type: CombatLogEntry['type'], entityId?: EntityId): void {
+    this.combatLog.push({
+      turn: this.currentTurn,
+      message,
+      type,
+      entityId,
+      timestamp: Date.now()
+    });
+  }
+
+  // Public utility methods
+  getCombatResult(): CombatResult {
+    const isVictory = this.checkVictory();
+    const isDefeat = this.checkDefeat();
+    
+    return {
+      outcome: isVictory ? 'victory' : isDefeat ? 'defeat' : 'escape',
+      loot: isVictory ? this.generateLoot() : undefined,
+      experience: isVictory ? this.calculateExperienceReward() : undefined,
+      gold: isVictory ? this.calculateGoldReward() : undefined,
+      totalDamageDealt: this.damageHistory.filter(d => d.attackerId === this.player.id)
+        .reduce((sum, d) => sum + d.finalDamage, 0),
+      totalDamageTaken: this.damageHistory.filter(d => d.targetId === this.player.id)
+        .reduce((sum, d) => sum + d.finalDamage, 0),
+      turnsElapsed: this.currentTurn,
+      abilitiesUsed: [], // Track abilities used
+      combatLog: this.combatLog
+    };
+  }
+
+  private calculateExperienceReward(): number {
+    return this.enemies.reduce((sum, enemy) => sum + enemy.experienceReward, 0);
+  }
+
+  private calculateGoldReward(): number {
+    return this.enemies.reduce((sum, enemy) => {
+      const [min, max] = enemy.goldReward;
+      return sum + Math.floor(Math.random() * (max - min + 1)) + min;
+    }, 0);
+  }
+}

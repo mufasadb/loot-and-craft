@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run generate-assets && tsc && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate-assets": "node scripts/enhanced-asset-processor.cjs",
+    "generate-assets-simple": "node scripts/generate-asset-manifest.cjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "canvas": "^2.11.2",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-pwa": "^1.0.0",
