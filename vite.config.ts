@@ -41,7 +41,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['mobx', 'mobx-react-lite'],
+          vendor: ['mobx'],
           supabase: ['@supabase/supabase-js']
         }
       }
