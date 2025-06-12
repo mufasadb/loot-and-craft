@@ -31,3 +31,6 @@ export { supabase, GameDataService } from './supabase';
 
 // Asset service for Supabase integration
 export { AssetService } from './AssetService';
+
+// Safe logging utility
+export { logger } from './Logger';

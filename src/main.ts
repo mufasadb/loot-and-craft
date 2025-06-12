@@ -2,6 +2,7 @@ import './style.css'
 import { gameStore } from './stores/GameStore'
 import { uiStore } from './stores/UIStore'
 import { GameLayout } from './components/Layout'
+import { logger } from './services/Logger'
 
 // Import custom elements
 import './components/CharacterEquipment'
@@ -12,7 +13,7 @@ import './components/ItemTooltip'
 let gameLayout: GameLayout | null = null
 
 async function initGame() {
-  console.log('🎮 Initializing Loot & Craft...')
+  logger.info('🎮 Initializing Loot & Craft...')
   
   const app = document.querySelector<HTMLDivElement>('#app')!
   
@@ -29,31 +30,31 @@ async function initGame() {
   
   try {
     // Initialize game stores
-    console.log('🔄 Starting game store initialization...')
+    logger.info('🔄 Starting game store initialization...')
     await gameStore.initializeGame()
-    console.log('✅ Game store initialized successfully!')
+    logger.info('✅ Game store initialized successfully!')
     
     // Initialize game layout with reactive rendering
-    console.log('🔄 Starting game layout initialization...')
+    logger.info('🔄 Starting game layout initialization...')
     gameLayout = new GameLayout(app)
-    console.log('✅ Game layout initialized successfully!')
+    logger.info('✅ Game layout initialized successfully!')
     
     // Expose gameStore to window for debugging
     ;(window as any).gameStore = gameStore
     ;(window as any).uiStore = uiStore
-    console.log('🔧 Debug stores exposed to window.gameStore and window.uiStore')
+    logger.info('🔧 Debug stores exposed to window.gameStore and window.uiStore')
     
-    console.log('✅ Game initialized successfully!')
+    logger.info('✅ Game initialized successfully!')
   } catch (error) {
-    console.error('❌ Failed to initialize game:', error)
+    logger.error('❌ Failed to initialize game:', error)
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     const errorStack = error instanceof Error ? error.stack : undefined
     
     if (errorStack) {
-      console.error('Error stack:', errorStack)
+      logger.error('Error stack:', errorStack)
     }
-    console.error('Error message:', errorMessage)
+    logger.error('Error message:', errorMessage)
     
     app.innerHTML = `
       <div class="error-screen">

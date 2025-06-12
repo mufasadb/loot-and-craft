@@ -3,6 +3,7 @@ import { gameStore } from '../stores/GameStore'
 import { AssetService } from '../services/AssetService'
 import { autorun } from 'mobx'
 import { CombatArena } from './CombatArena'
+import { logger } from '../services/Logger'
 
 export class GameLayout {
   private app: HTMLElement
@@ -95,7 +96,7 @@ export class GameLayout {
       this.assetsLoaded = true;
       this.applyBackgroundStyles();
     } catch (error) {
-      console.warn('Failed to load background assets:', error);
+      logger.warn('Failed to load background assets:', error);
       this.assetsLoaded = true;
     }
   }

@@ -632,9 +632,96 @@ export class Enemy extends BaseEntity implements IEnemy {
     });
   }
 
-  selectIntent(): EnemyIntent {
-    // Use AI pattern to select next action
-    this.currentIntent = this.aiPattern.selectAction(this, []);
+  selectIntent(targets: IEntity[] = []): EnemyIntent {
+    // Enhanced AI decision-making based on combat context
+    const healthPercentage = this.currentHealth / this.baseStats.maxHealth;
+    const player = targets.find(t => 'inventory' in t); // Find player target
+    
+    // Determine action based on AI pattern and current situation
+    let selectedAction: EnemyIntent['action'] = 'attack'; // Default
+    let targetId: string | undefined;
+    let estimatedDamage: [number, number] = [0, 0];
+    let description = 'Chooses an action';
+    let iconPath = '/assets/ui/icons/sword.png';
+    let additionalEffects: string[] = [];
+    
+    // 1. Check if enemy should retreat/defend (low health)
+    if (healthPercentage <= this.aiPattern.retreatThreshold) {
+      if (!this.aiPattern.avoidsBlocking && Math.random() < 0.7) {
+        selectedAction = 'defend';
+        description = `${this.name} raises guard defensively`;
+        iconPath = '/assets/ui/icons/shield.png';
+      }
+    }
+    
+    // 2. Check for ability usage
+    else if (Math.random() < this.aiPattern.abilityUsageFrequency) {
+      // TODO: Select from available abilities
+      // For now, simulate with basic ability
+      if (this.enemyType === EnemyType.MAGIC || this.enemyType === EnemyType.RANGED) {
+        selectedAction = 'ability';
+        description = `${this.name} prepares a special ability`;
+        iconPath = '/assets/ui/icons/magic.png';
+        estimatedDamage = [
+          Math.floor(this.computedStats.damage * 1.2),
+          Math.floor(this.computedStats.damage * 1.8)
+        ];
+        additionalEffects = ['May apply status effect'];
+      }
+    }
+    
+    // 3. Regular attack decision
+    else {
+      selectedAction = 'attack';
+      
+      // Select target based on AI intelligence
+      if (player && this.aiPattern.focusesWeakest) {
+        targetId = player.id;
+        
+        // Calculate estimated damage against player
+        const playerArmor = (player as any).computedStats?.armor || 0;
+        const baseDamage = this.computedStats.damage;
+        const minDamage = Math.max(1, baseDamage - playerArmor);
+        const maxDamage = Math.max(1, Math.floor(baseDamage * 1.5) - playerArmor);
+        
+        estimatedDamage = [minDamage, maxDamage];
+        description = `${this.name} targets you for ${minDamage}-${maxDamage} damage`;
+      } else if (targets.length > 0) {
+        // Random target selection for less intelligent enemies
+        const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+        targetId = randomTarget.id;
+        
+        const baseDamage = this.computedStats.damage;
+        estimatedDamage = [
+          Math.max(1, Math.floor(baseDamage * 0.8)),
+          Math.max(1, Math.floor(baseDamage * 1.2))
+        ];
+        description = `${this.name} prepares to attack`;
+      }
+      
+      iconPath = '/assets/ui/icons/sword.png';
+    }
+    
+    // 4. Movement consideration for ranged enemies
+    if (this.rangeState === RangeState.OUT_OF_RANGE && 
+        (this.enemyType === EnemyType.MELEE || Math.random() < 0.3)) {
+      selectedAction = 'move';
+      description = `${this.name} moves to close distance`;
+      iconPath = '/assets/ui/icons/move.png';
+    }
+    
+    // Create the intent
+    this.currentIntent = {
+      action: selectedAction,
+      targetId,
+      estimatedDamage,
+      damageType: this.enemyType === EnemyType.MAGIC ? 'Fire' : 'Physical',
+      additionalEffects,
+      iconPath,
+      description,
+      isMultiTarget: false // TODO: Implement multi-target abilities
+    };
+    
     return this.currentIntent;
   }
 

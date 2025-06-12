@@ -25,10 +25,12 @@ import {
   RangeState, 
   DamageType, 
   EffectTrigger,
+  ItemType
  
 } from '../types/enums';
 import { EffectProcessor, EffectFactory } from './EffectProcessor';
 import { Player as PlayerImpl, Enemy as EnemyImpl } from './Entity';
+import { ItemFactory } from './ItemFactory';
 
 export class CombatManager implements ICombatManager {
   // State machine
@@ -55,8 +57,12 @@ export class CombatManager implements ICombatManager {
   
   // Systems
   private effectProcessor: EffectProcessor;
+  private itemFactory: ItemFactory;
   private pendingPlayerAction?: PlayerAction;
   // private _combatStartTime: number;  // Unused variable
+  
+  // Combat outcome tracking
+  public escapedCombat: boolean = false;
 
   constructor(params: CombatInitParams) {
     this.player = params.player as PlayerImpl;
@@ -75,6 +81,7 @@ export class CombatManager implements ICombatManager {
     // this._combatStartTime = Date.now();  // Unused variable
     
     this.effectProcessor = new EffectProcessor();
+    this.itemFactory = new ItemFactory();
 
     makeObservable(this, {
       currentState: observable,
@@ -335,22 +342,133 @@ export class CombatManager implements ICombatManager {
 
   // Loot generation
   generateLoot(): Item[] {
-    // This would be implemented with the ItemFactory
-    // For now, return empty array
-    return [];
+    const loot: Item[] = [];
+    
+    for (const enemy of this.enemies) {
+      // Generate loot based on enemy loot tier and type
+      const lootRolls = this.calculateLootRolls(enemy);
+      
+      for (let i = 0; i < lootRolls; i++) {
+        // 70% chance for equipment, 20% crafting materials, 10% keys
+        const roll = Math.random();
+        
+        if (roll < 0.7) {
+          // Generate equipment item
+          try {
+            const item = this.itemFactory.generateRandomItem(enemy.lootTier);
+            loot.push(item);
+          } catch (error) {
+            // Fallback to crafting material if no templates available
+            const material = this.generateCraftingMaterialForTier(enemy.lootTier);
+            loot.push(material);
+          }
+        } else if (roll < 0.9) {
+          // Generate crafting material
+          const material = this.generateCraftingMaterialForTier(enemy.lootTier);
+          loot.push(material);
+        } else {
+          // Generate dungeon key (rare)
+          const key = this.itemFactory.generateDungeonKey(
+            Math.min(enemy.lootTier + 1, 5), // Keys for next tier
+            'generic'
+          );
+          loot.push(key);
+        }
+      }
+      
+      // Elite and boss enemies have guaranteed additional loot
+      if (enemy.isElite) {
+        const bonusItem = this.itemFactory.generateRandomItem(enemy.lootTier);
+        loot.push(bonusItem);
+      }
+      
+      if (enemy.isBoss) {
+        // Bosses drop multiple guaranteed items
+        for (let i = 0; i < 2 + Math.floor(enemy.lootTier / 2); i++) {
+          const bossLoot = this.itemFactory.generateRandomItem(enemy.lootTier);
+          loot.push(bossLoot);
+        }
+        
+        // Bosses always drop a key for the next tier
+        const bossKey = this.itemFactory.generateDungeonKey(
+          Math.min(enemy.lootTier + 1, 5),
+          'boss'
+        );
+        loot.push(bossKey);
+      }
+    }
+    
+    return loot;
+  }
+
+  private calculateLootRolls(enemy: EnemyImpl): number {
+    // Base loot rolls based on enemy tier
+    const baseLootRolls = Math.max(1, Math.floor(enemy.lootTier / 2));
+    
+    // Random variance (±1)
+    const variance = Math.random() < 0.5 ? -1 : (Math.random() < 0.7 ? 0 : 1);
+    
+    return Math.max(1, baseLootRolls + variance);
+  }
+
+  private generateCraftingMaterialForTier(tier: number): Item {
+    const materials = [
+      'transmutation_orb',  // Tier 1-2
+      'alteration_orb',     // Tier 2-3
+      'alchemy_orb',        // Tier 3-4
+      'chaos_orb',          // Tier 4-5
+      'exalted_orb'         // Tier 5
+    ];
+    
+    // Select appropriate material for tier
+    const materialIndex = Math.min(Math.max(0, tier - 1), materials.length - 1);
+    const materialType = materials[materialIndex];
+    
+    // Higher tiers have chance for higher-tier materials
+    if (tier >= 3 && Math.random() < 0.3) {
+      const upgradeIndex = Math.min(materialIndex + 1, materials.length - 1);
+      return this.itemFactory.generateCraftingMaterial(materials[upgradeIndex]);
+    }
+    
+    return this.itemFactory.generateCraftingMaterial(materialType);
   }
 
   applyKeyModifiers(loot: Item[]): Item[] {
-    // Apply key modifiers that affect loot
+    let modifiedLoot = [...loot];
+    
     for (const modifier of this.keyModifiers) {
       if (modifier.effects.lootTierBonus) {
-        // Upgrade loot tiers
+        // Upgrade existing loot to higher tiers
+        modifiedLoot = modifiedLoot.map(item => {
+          if (item.type === ItemType.WEAPON || item.type === ItemType.ARMOR) {
+            try {
+              const upgradedTier = Math.min(5, this.dungeonTier + modifier.effects.lootTierBonus!);
+              return this.itemFactory.generateRandomItem(upgradedTier);
+            } catch (error) {
+              return item; // Keep original if upgrade fails
+            }
+          }
+          return item;
+        });
       }
+      
       if (modifier.effects.lootQuantityMultiplier) {
-        // Multiply loot quantity
+        // Generate additional loot items
+        const bonusCount = Math.floor(loot.length * (modifier.effects.lootQuantityMultiplier! - 1));
+        for (let i = 0; i < bonusCount; i++) {
+          try {
+            const bonusItem = this.itemFactory.generateRandomItem(this.dungeonTier);
+            modifiedLoot.push(bonusItem);
+          } catch (error) {
+            // Fallback to crafting material
+            const material = this.generateCraftingMaterialForTier(this.dungeonTier);
+            modifiedLoot.push(material);
+          }
+        }
       }
     }
-    return loot;
+    
+    return modifiedLoot;
   }
 
   // Private state processing methods
@@ -450,6 +568,7 @@ export class CombatManager implements ICombatManager {
 
   private executeEscapeAction(action: EscapeAction): void {
     if (Math.random() < action.successChance) {
+      this.escapedCombat = true;
       this.addLogEntry('Successfully escaped from combat!', 'system');
       this.setState(CombatState.COMBAT_END);
     } else {
@@ -471,9 +590,11 @@ export class CombatManager implements ICombatManager {
   }
 
   private generateEnemyIntents(): void {
+    const allTargets = [this.player, ...this.enemies.filter(e => e.currentHealth > 0)];
+    
     for (const enemy of this.enemies.filter(e => e.currentHealth > 0)) {
-      const intent = enemy.selectIntent();
-      this.addLogEntry(`${enemy.name} intends to ${intent.description}`, 'system');
+      const intent = enemy.selectIntent(allTargets);
+      this.addLogEntry(`${enemy.name}: ${intent.description}`, 'action');
     }
   }
 
@@ -558,7 +679,7 @@ export class CombatManager implements ICombatManager {
   }
 
   // Damage calculation
-  private calculateDamage(attacker: Entity, target: Entity, weapon?: Item): DamageCalculation {
+  calculateDamage(attacker: Entity, target: Entity, weapon?: Item): DamageCalculation {
     const baseDamage = attacker.computedStats.damage + (weapon?.equipment?.inherentStats.damage || 0);
     
     // Hit calculation
@@ -689,11 +810,11 @@ export class CombatManager implements ICombatManager {
     };
   }
 
-  private calculateExperienceReward(): number {
+  calculateExperienceReward(): number {
     return this.enemies.reduce((sum, enemy) => sum + enemy.experienceReward, 0);
   }
 
-  private calculateGoldReward(): number {
+  calculateGoldReward(): number {
     return this.enemies.reduce((sum, enemy) => {
       const [min, max] = enemy.goldReward;
       return sum + Math.floor(Math.random() * (max - min + 1)) + min;

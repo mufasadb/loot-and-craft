@@ -10,7 +10,7 @@ export class CombatParticipants {
   }
 
   public render(player?: Player, enemy?: Enemy, state?: CombatState): string {
-    if (!player || !enemy) {
+    if (!player) {
       return '<div class="combat-participants"><p>Loading participants...</p></div>';
     }
 
@@ -20,7 +20,7 @@ export class CombatParticipants {
         <div class="vs-indicator">
           <span class="vs-text">VS</span>
         </div>
-        ${this.renderEnemy(enemy, state)}
+        ${enemy ? this.renderEnemy(enemy, state) : this.renderEnemyPlaceholder(state)}
       </div>
     `;
   }
@@ -171,19 +171,94 @@ export class CombatParticipants {
     // Get enemy's intended action from current intent
     if (!enemy.currentIntent) return '';
 
-    const intentIcons: Record<string, string> = {
-      'attack': '⚔️',
-      'block': '🛡️',
-      'ability': '✨',
-      'move': '🏃',
-      'escape': '🚪'
-    };
+    const intent = enemy.currentIntent;
+    const intentData = this.getEnhancedIntentData(intent);
 
     return `
-      <div class="enemy-intent">
-        <span class="intent-icon">${intentIcons[enemy.currentIntent.action] || '❓'}</span>
+      <div class="enemy-intent ${intentData.className}" data-intent="${intent.action}">
+        <div class="intent-icon-container">
+          <img 
+            src="${intentData.iconPath}" 
+            alt="${intent.action}" 
+            class="intent-icon ${intentData.animationClass}"
+            onerror="this.style.display='none'; this.nextSibling.style.display='inline';"
+          />
+          <span class="intent-fallback-icon" style="display: none;">${intentData.fallbackIcon}</span>
+        </div>
+        
+        ${intent.estimatedDamage && intent.estimatedDamage[0] > 0 ? `
+          <div class="damage-prediction">
+            <span class="damage-range">${intent.estimatedDamage[0]}-${intent.estimatedDamage[1]}</span>
+            <span class="damage-type">${intent.damageType || 'Physical'}</span>
+          </div>
+        ` : ''}
+        
+        ${intent.additionalEffects && intent.additionalEffects.length > 0 ? `
+          <div class="additional-effects">
+            ${intent.additionalEffects.map(effect => `
+              <span class="effect-indicator" title="${effect}">⚡</span>
+            `).join('')}
+          </div>
+        ` : ''}
+        
+        ${intent.isMultiTarget ? `
+          <div class="multi-target-indicator" title="Targets multiple enemies">
+            <span class="multi-icon">⚡⚡</span>
+          </div>
+        ` : ''}
+        
+        <div class="intent-tooltip">
+          <span class="tooltip-text">${intent.description}</span>
+        </div>
       </div>
     `;
+  }
+
+  private getEnhancedIntentData(intent: any): {
+    iconPath: string;
+    fallbackIcon: string;
+    className: string;
+    animationClass: string;
+  } {
+    const intentData: Record<string, any> = {
+      'attack': {
+        iconPath: '/assets/ui/icons/sword.png',
+        fallbackIcon: '⚔️',
+        className: 'intent-attack',
+        animationClass: 'intent-pulse-red'
+      },
+      'defend': {
+        iconPath: '/assets/ui/icons/shield.png', 
+        fallbackIcon: '🛡️',
+        className: 'intent-defend',
+        animationClass: 'intent-pulse-blue'
+      },
+      'ability': {
+        iconPath: '/assets/ui/icons/magic.png',
+        fallbackIcon: '✨',
+        className: 'intent-ability',
+        animationClass: 'intent-pulse-purple'
+      },
+      'move': {
+        iconPath: '/assets/ui/icons/move.png',
+        fallbackIcon: '🏃',
+        className: 'intent-move',
+        animationClass: 'intent-slide'
+      },
+      'nothing': {
+        iconPath: '/assets/ui/icons/wait.png',
+        fallbackIcon: '⏸️',
+        className: 'intent-wait',
+        animationClass: 'intent-fade'
+      }
+    };
+
+    return intentData[intent.action] || {
+      iconPath: '/assets/ui/icons/unknown.png',
+      fallbackIcon: '❓',
+      className: 'intent-unknown',
+      animationClass: 'intent-pulse-gray'
+    };
   }
 
   private renderEffectOverlays(effects: any[]): string {
@@ -210,6 +285,138 @@ export class CombatParticipants {
         `).join('')}
       </div>
     `;
+  }
+
+  private renderEnemyPlaceholder(state?: CombatState): string {
+    const stateConfig = this.getEnemyPlaceholderConfig(state);
+    
+    return `
+      <div class="participant enemy-participant placeholder ${stateConfig.cssClass}">
+        <div class="participant-portrait">
+          <div class="placeholder-portrait ${stateConfig.portraitClass}">
+            <span class="placeholder-icon">${stateConfig.icon}</span>
+            ${stateConfig.showPulse ? '<div class="placeholder-pulse"></div>' : ''}
+          </div>
+        </div>
+        
+        <div class="participant-info">
+          <h3 class="participant-name">${stateConfig.title}</h3>
+          <div class="enemy-type">${stateConfig.subtitle}</div>
+          
+          <div class="placeholder-stats">
+            ${stateConfig.showProgress ? `
+              <div class="enemy-preparation-progress">
+                <div class="prep-label">${stateConfig.progressLabel}</div>
+                <div class="prep-bar-container">
+                  <div class="prep-bar animated"></div>
+                </div>
+              </div>
+            ` : ''}
+            
+            <div class="placeholder-message">
+              <span class="message-text">${stateConfig.message}</span>
+            </div>
+            
+            ${stateConfig.showStats ? `
+              <div class="estimated-stats">
+                <div class="stat-preview">
+                  <span class="stat-icon">⚔️</span>
+                  <span class="stat-label">Est. Damage</span>
+                  <span class="stat-value">8-12</span>
+                </div>
+                <div class="stat-preview">
+                  <span class="stat-icon">🛡️</span>
+                  <span class="stat-label">Est. Armor</span>
+                  <span class="stat-value">3-6</span>
+                </div>
+                <div class="stat-preview">
+                  <span class="stat-icon">💨</span>
+                  <span class="stat-label">Est. Initiative</span>
+                  <span class="stat-value">6-10</span>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private getEnemyPlaceholderConfig(state?: CombatState) {
+    switch (state) {
+      case CombatState.INITIALIZING:
+        return {
+          cssClass: 'initializing',
+          portraitClass: 'loading',
+          icon: '⚙️',
+          title: 'Spawning Enemy...',
+          subtitle: 'Initializing Combat',
+          message: '🎮 Setting up combat encounter',
+          showPulse: true,
+          showProgress: true,
+          showStats: false,
+          progressLabel: 'Spawning...'
+        };
+        
+      case CombatState.ROLL_INITIATIVE:
+        return {
+          cssClass: 'initiative-enemy',
+          portraitClass: 'rolling',
+          icon: '🎲',
+          title: 'Mystery Opponent',
+          subtitle: 'Rolling Initiative',
+          message: '🎯 Enemy is preparing for battle!',
+          showPulse: true,
+          showProgress: true,
+          showStats: true,
+          progressLabel: 'Rolling dice...'
+        };
+        
+      case CombatState.PLAYER_TURN_START:
+      case CombatState.PLAYER_ACTION_SELECT:
+        return {
+          cssClass: 'waiting',
+          portraitClass: 'watching',
+          icon: '👁️',
+          title: 'Enemy Watching',
+          subtitle: 'Awaiting Your Move',
+          message: '⏳ Enemy observes your actions carefully',
+          showPulse: false,
+          showProgress: false,
+          showStats: true,
+          progressLabel: ''
+        };
+        
+      case CombatState.ENEMY_TURN_START:
+      case CombatState.ENEMY_INTENT:
+      case CombatState.ENEMY_ACTION_RESOLVE:
+        return {
+          cssClass: 'active-enemy',
+          portraitClass: 'active',
+          icon: '👹',
+          title: 'Enemy Acting',
+          subtitle: 'Planning Attack',
+          message: '⚔️ Enemy is making their move!',
+          showPulse: true,
+          showProgress: true,
+          showStats: true,
+          progressLabel: 'Calculating attack...'
+        };
+        
+      default:
+        return {
+          cssClass: 'loading',
+          portraitClass: 'loading',
+          icon: '❓',
+          title: 'Enemy Loading...',
+          subtitle: 'Preparing...',
+          message: '🔄 Loading enemy data',
+          showPulse: true,
+          showProgress: false,
+          showStats: false,
+          progressLabel: ''
+        };
+    }
   }
 
   private renderActiveEffects(effects: any[]): string {
