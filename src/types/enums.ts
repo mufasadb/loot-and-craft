@@ -11,6 +11,8 @@ export enum ItemRarity {
 
 export enum ItemType {
   EQUIPMENT = 'equipment',
+  WEAPON = 'weapon',
+  ARMOR = 'armor',
   CRAFTING = 'crafting',
   KEY = 'key'
 }
@@ -39,6 +41,7 @@ export enum ArmorType {
   PLATE = 'plate',       // Physical armor, high mitigation
   MAIL = 'mail',        // Medium armor
   LEATHER = 'leather',   // Light armor, may offer dodge
+  LIGHT = 'light',      // Light armor variant
   ROBES = 'robes',      // Magic armor, grants energy shield
   CIRCLET = 'circlet'   // Light head armor with magic properties
 }

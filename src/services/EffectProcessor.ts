@@ -4,16 +4,11 @@ import { makeObservable, observable, action } from 'mobx';
 import {
   CombatEffect,
   StatusEffect,
-  AbilityEffect,
   EffectProcessor as IEffectProcessor,
   IgniteEffect,
   ChillEffect,
   FreezeEffect,
-  ShockEffect,
-  CurseEffect,
   OnHitEffect,
-  AuraEffect,
-  ReflectDamageEffect,
   LifeStealEffect,
   BlockEffect
 } from '../types/effects';
@@ -159,7 +154,7 @@ export class ChillEffectImpl extends BaseCombatEffect implements ChillEffect {
     };
   }
 
-  process(context: EffectContext): EffectResult {
+  process(_context: EffectContext): EffectResult {
     return { success: true, message: 'Movement slowed by chill' };
   }
 }
@@ -203,7 +198,7 @@ export class FreezeEffectImpl extends BaseCombatEffect implements FreezeEffect {
 }
 
 export class BlockEffectImpl extends BaseCombatEffect implements BlockEffect {
-  triggers = [EffectTrigger.BEFORE_DAMAGE_TAKEN] as const;
+  triggers = [EffectTrigger.BEFORE_DAMAGE_TAKEN];
   duration = { amount: 1, unit: DurationUnit.TURNS } as const;
   armorDoubling = true as const;
   damageReduction = 0.25 as const;
@@ -247,7 +242,7 @@ export class BlockEffectImpl extends BaseCombatEffect implements BlockEffect {
     return { success: false };
   }
 
-  onApply(target: EntityId): void {
+  onApply(_target: EntityId): void {
     // The armor doubling is handled by the entity's tempStatModifiers
     // This is applied when the block action is executed
   }
@@ -255,7 +250,7 @@ export class BlockEffectImpl extends BaseCombatEffect implements BlockEffect {
 
 // Ability Effect implementations
 export class OnHitEffectImpl extends BaseCombatEffect implements OnHitEffect {
-  triggers = [EffectTrigger.ON_ATTACK] as const;
+  triggers = [EffectTrigger.ON_ATTACK];
   abilityId: string;
   isToggleable: boolean;
   isActive: boolean;
@@ -310,7 +305,7 @@ export class OnHitEffectImpl extends BaseCombatEffect implements OnHitEffect {
 }
 
 export class LifeStealEffectImpl extends BaseCombatEffect implements LifeStealEffect {
-  triggers = [EffectTrigger.AFTER_ATTACK] as const;
+  triggers = [EffectTrigger.AFTER_ATTACK];
   abilityId: string;
   isToggleable: boolean;
   isActive: boolean;
@@ -449,7 +444,7 @@ export class EffectProcessor implements IEffectProcessor {
   }
 
   advanceDurations(trigger: EffectTrigger): void {
-    for (const [targetId, effects] of this.entityEffects.entries()) {
+    for (const [, effects] of this.entityEffects.entries()) {
       for (const effect of effects) {
         // Only advance turn-based durations on turn end
         if (trigger === EffectTrigger.TURN_END && effect.duration.unit === DurationUnit.TURNS) {

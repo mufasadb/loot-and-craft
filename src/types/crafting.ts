@@ -63,6 +63,7 @@ export interface EssenceOfEnchantment extends CraftingOrb {
   transformationRules: {
     requiresRarity: ItemRarity.NORMAL;
     resultRarity: ItemRarity.MAGIC;
+    preserveAffixes: false;
     affixGeneration: {
       minAffixes: 1;
       maxAffixes: 2;
@@ -76,6 +77,7 @@ export interface EssenceOfEmpowerment extends CraftingOrb {
   transformationRules: {
     requiresRarity: ItemRarity.NORMAL;
     resultRarity: ItemRarity.RARE;
+    preserveAffixes: false;
     affixGeneration: {
       minAffixes: 3;
       maxAffixes: 4;
@@ -89,6 +91,7 @@ export interface ShardOfFlux extends CraftingOrb {
   transformationRules: {
     requiresRarity: ItemRarity.MAGIC;
     resultRarity: ItemRarity.MAGIC;
+    preserveAffixes: false;
     rerollAllAffixes: true;
     successChance: 1.0;
   };
@@ -99,6 +102,7 @@ export interface CrystalOfChaos extends CraftingOrb {
   transformationRules: {
     requiresRarity: ItemRarity.RARE;
     resultRarity: ItemRarity.RARE;
+    preserveAffixes: false;
     rerollAllAffixes: true;
     successChance: 1.0;
   };

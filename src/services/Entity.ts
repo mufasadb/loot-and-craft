@@ -12,7 +12,7 @@ import {
   EnemyAIPattern,
   EnemyIntent
 } from '../types/entities';
-import { BaseStats, EntityId, Position, DurationInfo } from '../types/base';
+import { BaseStats, EntityId, Position } from '../types/base';
 import { CombatEffect, EffectCollection, StatusEffect, AbilityEffect } from '../types/effects';
 import { EquipmentSlot, RangeState, StartingClass, EnemyType, EffectTrigger, DurationUnit } from '../types/enums';
 import { Item } from '../types/items';
@@ -42,18 +42,6 @@ export abstract class BaseEntity implements IEntity {
   tempStatModifiers: Partial<BaseStats>;
 
   constructor(id: EntityId, name: string, baseStats: BaseStats) {
-    makeObservable(this, {
-      baseStats: observable,
-      currentHealth: observable,
-      currentMana: observable,
-      currentEnergyShield: observable,
-      rangeState: observable,
-      position: observable,
-      initiative: observable,
-      tempStatModifiers: observable,
-      computedStats: computed
-    });
-
     this.id = id;
     this.name = name;
     this.baseStats = baseStats;
@@ -89,7 +77,7 @@ export abstract class BaseEntity implements IEntity {
   }
 
   // Damage handling with Energy Shield mechanics
-  takeDamage(amount: number, type: string = 'physical'): boolean {
+  takeDamage(amount: number, _type: string = 'physical'): boolean {
     if (amount <= 0) return this.currentHealth > 0;
     
     // Energy Shield absorbs all damage types first
@@ -279,17 +267,7 @@ export class Player extends BaseEntity implements IPlayer {
   ) {
     super(id, name, baseStats);
     
-    makeObservable(this, {
-      level: observable,
-      experience: observable,
-      gold: observable,
-      equipment: observable,
-      inventory: observable,
-      currentLoadout: observable,
-      canAct: observable,
-      lastAction: observable
-    });
-
+    // Initialize fields first
     this.level = 1;
     this.experience = 0;
     this.gold = 0;
@@ -300,6 +278,32 @@ export class Player extends BaseEntity implements IPlayer {
     this.loadouts = [];
     this.currentLoadout = 0;
     this.canAct = true;
+    this.lastAction = undefined;
+    
+    // Then configure MobX
+    makeObservable(this, {
+      // Inherited fields from BaseEntity
+      baseStats: observable,
+      currentHealth: observable,
+      currentMana: observable,
+      currentEnergyShield: observable,
+      rangeState: observable,
+      initiative: observable,
+      tempStatModifiers: observable,
+      computedStats: computed,
+      // Player-specific observables
+      startingClass: false,
+      stash: false,
+      loadouts: false,
+      level: observable,
+      experience: observable,
+      gold: observable,
+      equipment: observable,
+      inventory: observable,
+      currentLoadout: observable,
+      canAct: observable,
+      lastAction: observable
+    });
   }
 
   equipItem(item: Item, slot: EquipmentSlot): boolean {
@@ -358,8 +362,13 @@ export class Player extends BaseEntity implements IPlayer {
   }
 
   canEquip(item: Item, slot: EquipmentSlot): boolean {
+    // Check if item is equipment type
+    if (!item.equipment) {
+      return false;
+    }
+    
     // Check if item is compatible with slot
-    if (!item.equipmentSlot || item.equipmentSlot !== slot) {
+    if (item.equipment.slot !== slot) {
       return false;
     }
     
@@ -396,6 +405,17 @@ class PlayerEquipmentImpl implements PlayerEquipment {
   ring2?: Item;
 
   constructor() {
+    // Initialize all equipment slots to undefined
+    this.weapon = undefined;
+    this.shield = undefined;
+    this.helmet = undefined;
+    this.chest = undefined;
+    this.gloves = undefined;
+    this.boots = undefined;
+    this.amulet = undefined;
+    this.ring1 = undefined;
+    this.ring2 = undefined;
+    
     makeObservable(this, {
       weapon: observable,
       shield: observable,
@@ -421,13 +441,25 @@ class PlayerEquipmentImpl implements PlayerEquipment {
     const stats: Partial<BaseStats> = {};
     
     this.getAllEquipped().forEach(item => {
-      if (item.stats) {
-        Object.entries(item.stats).forEach(([key, value]) => {
+      // Add inherent stats from equipment
+      if (item.equipment?.inherentStats) {
+        Object.entries(item.equipment.inherentStats).forEach(([key, value]) => {
           if (value !== undefined) {
             (stats as any)[key] = ((stats as any)[key] || 0) + value;
           }
         });
       }
+      
+      // Add affix stats
+      item.affixes.forEach(affix => {
+        if (affix.statModifiers) {
+          Object.entries(affix.statModifiers).forEach(([key, value]) => {
+            if (value !== undefined) {
+              (stats as any)[key] = ((stats as any)[key] || 0) + value;
+            }
+          });
+        }
+      });
     });
     
     return stats;
@@ -437,8 +469,8 @@ class PlayerEquipmentImpl implements PlayerEquipment {
     const abilities: string[] = [];
     
     this.getAllEquipped().forEach(item => {
-      if (item.grantedAbilities) {
-        abilities.push(...item.grantedAbilities);
+      if (item.equipment?.grantedAbilities) {
+        abilities.push(...item.equipment.grantedAbilities);
       }
     });
     
@@ -452,12 +484,12 @@ class PlayerInventoryImpl implements PlayerInventory {
   maxSize: number;
 
   constructor(maxSize: number = 20) {
+    this.maxSize = maxSize;
+    
     makeObservable(this, {
       items: observable,
       maxSize: observable
     });
-    
-    this.maxSize = maxSize;
   }
 
   addItem(item: Item): boolean {
@@ -506,22 +538,22 @@ class PlayerStashImpl implements PlayerStash {
     });
   }
 
-  addItemToTab(item: Item, tabIndex: number): boolean {
+  addItemToTab(_item: Item, _tabIndex: number): boolean {
     // TODO: Implement
     return false;
   }
 
-  moveItemBetweenTabs(itemId: string, fromTab: number, toTab: number): boolean {
+  moveItemBetweenTabs(_itemId: string, _fromTab: number, _toTab: number): boolean {
     // TODO: Implement
     return false;
   }
 
-  findItemInAllTabs(itemId: string): { item: Item; tab: number; index: number } | null {
+  findItemInAllTabs(_itemId: string): { item: Item; tab: number; index: number } | null {
     // TODO: Implement
     return null;
   }
 
-  searchItems(query: string): { item: Item; tab: number; index: number }[] {
+  searchItems(_query: string): { item: Item; tab: number; index: number }[] {
     // TODO: Implement
     return [];
   }
@@ -559,16 +591,7 @@ export class Enemy extends BaseEntity implements IEnemy {
   ) {
     super(id, name, baseStats);
     
-    makeObservable(this, {
-      enemyType: observable,
-      currentIntent: observable,
-      lootTier: observable,
-      experienceReward: observable,
-      goldReward: observable,
-      isElite: observable,
-      isBoss: observable
-    });
-
+    // Initialize fields first
     this.enemyType = enemyType;
     this.aiPattern = aiPattern;
     this.lootTier = lootTier;
@@ -579,13 +602,34 @@ export class Enemy extends BaseEntity implements IEnemy {
     this.isElite = false;
     this.isBoss = false;
     
-    // Initialize with a default "nothing" intent
+    // Initialize with a default "nothing" intent BEFORE makeObservable
     this.currentIntent = {
       action: 'nothing',
       iconPath: '',
       description: 'Deciding what to do...',
       isMultiTarget: false
     };
+    
+    // Then configure MobX
+    makeObservable(this, {
+      // Inherited fields from BaseEntity
+      baseStats: observable,
+      currentHealth: observable,
+      currentMana: observable,
+      currentEnergyShield: observable,
+      rangeState: observable,
+      initiative: observable,
+      tempStatModifiers: observable,
+      computedStats: computed,
+      // Enemy-specific observables
+      enemyType: observable,
+      currentIntent: observable,
+      lootTier: observable,
+      experienceReward: observable,
+      goldReward: observable,
+      isElite: observable,
+      isBoss: observable
+    });
   }
 
   selectIntent(): EnemyIntent {
@@ -594,7 +638,7 @@ export class Enemy extends BaseEntity implements IEnemy {
     return this.currentIntent;
   }
 
-  executeIntent(targets: IEntity[]): void {
+  executeIntent(_targets: IEntity[]): void {
     // TODO: Implement intent execution based on current intent
     switch (this.currentIntent.action) {
       case 'attack':

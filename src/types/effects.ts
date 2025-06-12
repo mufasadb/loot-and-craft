@@ -88,12 +88,12 @@ export interface CurseEffect extends StatusEffect {
 
 // Specific ability effect implementations
 export interface OnHitEffect extends AbilityEffect {
-  triggers: [EffectTrigger.ON_ATTACK];
+  triggers: EffectTrigger[];
   effectToApply: StatusEffect;       // What status to apply on hit
 }
 
 export interface AuraEffect extends AbilityEffect {
-  triggers: [EffectTrigger.CONTINUOUS];
+  triggers: EffectTrigger[];
   radius: number;                    // Affects nearby entities
   affectsAllies: boolean;
   affectsEnemies: boolean;
@@ -101,20 +101,20 @@ export interface AuraEffect extends AbilityEffect {
 }
 
 export interface ReflectDamageEffect extends AbilityEffect {
-  triggers: [EffectTrigger.AFTER_DAMAGE_TAKEN];
+  triggers: EffectTrigger[];
   reflectPercentage: number;         // How much damage to reflect
   reflectType?: 'same' | 'fire' | 'lightning' | 'ice' | 'dark';
 }
 
 export interface LifeStealEffect extends AbilityEffect {
-  triggers: [EffectTrigger.AFTER_ATTACK];
+  triggers: EffectTrigger[];
   stealPercentage: number;           // Percentage of damage dealt
   healsEnergyShield: boolean;        // Whether it can heal ES too
 }
 
 // Block effect (special defensive action)
 export interface BlockEffect extends AbilityEffect {
-  triggers: [EffectTrigger.BEFORE_DAMAGE_TAKEN];
+  triggers: EffectTrigger[];
   duration: { amount: 1; unit: DurationUnit.TURNS };
   armorDoubling: true;
   damageReduction: 0.25;             // 25% damage reduction

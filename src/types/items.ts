@@ -2,7 +2,7 @@
 
 import { 
   ItemRarity, ItemType, EquipmentSlot, WeaponType, ArmorType, 
-  AffixType, AffixTier, DamageType 
+  AffixType, AffixTier 
 } from './enums';
 import { BaseStats, EntityId } from './base';
 

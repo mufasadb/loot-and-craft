@@ -1,3 +1,137 @@
 {
-  "enemies": []
+  "version": "1.0.0",
+  "enemyTemplates": {
+    "river": {
+      "tier1": [
+        {
+          "id": "river-crab",
+          "name": "River Crab",
+          "enemyType": "MELEE",
+          "stats": {
+            "maxHealth": 35,
+            "maxMana": 0,
+            "maxEnergyShield": 0,
+            "armor": 8,
+            "damage": 12,
+            "initiative": 8,
+            "level": 1
+          },
+          "abilities": ["pincer_attack"],
+          "spriteKey": "crab",
+          "lootTier": 1,
+          "description": "A small but aggressive freshwater crab with sharp pincers."
+        },
+        {
+          "id": "water-sprite",
+          "name": "Water Sprite",
+          "enemyType": "MAGIC",
+          "stats": {
+            "maxHealth": 25,
+            "maxMana": 30,
+            "maxEnergyShield": 10,
+            "armor": 3,
+            "damage": 15,
+            "initiative": 14,
+            "level": 1
+          },
+          "abilities": ["water_bolt", "mist_form"],
+          "spriteKey": "water_sprite",
+          "lootTier": 1,
+          "description": "A mystical being made of flowing water and mist."
+        },
+        {
+          "id": "river-snake",
+          "name": "River Snake",
+          "enemyType": "RANGED",
+          "stats": {
+            "maxHealth": 30,
+            "maxMana": 15,
+            "maxEnergyShield": 0,
+            "armor": 4,
+            "damage": 18,
+            "initiative": 16,
+            "level": 1
+          },
+          "abilities": ["poison_spit", "quick_strike"],
+          "spriteKey": "snake",
+          "lootTier": 1,
+          "description": "A venomous snake that lurks near the water's edge."
+        },
+        {
+          "id": "mud-golem",
+          "name": "Mud Golem",
+          "enemyType": "MELEE", 
+          "stats": {
+            "maxHealth": 55,
+            "maxMana": 0,
+            "maxEnergyShield": 0,
+            "armor": 12,
+            "damage": 20,
+            "initiative": 6,
+            "level": 1
+          },
+          "abilities": ["mud_slam", "harden"],
+          "spriteKey": "mud_golem",
+          "lootTier": 1,
+          "description": "A slow but sturdy creature formed from river mud and debris."
+        },
+        {
+          "id": "river-bandit",
+          "name": "River Bandit",
+          "enemyType": "RANGED",
+          "stats": {
+            "maxHealth": 40,
+            "maxMana": 10,
+            "maxEnergyShield": 0,
+            "armor": 6,
+            "damage": 16,
+            "initiative": 12,
+            "level": 1
+          },
+          "abilities": ["crossbow_shot", "dirty_fighting"],
+          "spriteKey": "bandit",
+          "lootTier": 1,
+          "description": "A desperate outlaw who preys on travelers near the river."
+        }
+      ]
+    }
+  },
+  "aiPatterns": {
+    "aggressive": {
+      "id": "aggressive",
+      "name": "Aggressive",
+      "aggressiveness": 0.8,
+      "defensiveness": 0.2,
+      "cooldownManagement": "aggressive",
+      "targetSelection": "closest",
+      "description": "Focuses on dealing damage quickly"
+    },
+    "defensive": {
+      "id": "defensive", 
+      "name": "Defensive",
+      "aggressiveness": 0.3,
+      "defensiveness": 0.7,
+      "cooldownManagement": "conservative",
+      "targetSelection": "weakest",
+      "description": "Prioritizes survival and protection"
+    },
+    "balanced": {
+      "id": "balanced",
+      "name": "Balanced",
+      "aggressiveness": 0.5,
+      "defensiveness": 0.5,
+      "cooldownManagement": "balanced",
+      "targetSelection": "strategic",
+      "description": "Uses a mix of offensive and defensive tactics"
+    },
+    "magical": {
+      "id": "magical",
+      "name": "Magical",
+      "aggressiveness": 0.6,
+      "defensiveness": 0.4,
+      "cooldownManagement": "conservative",
+      "targetSelection": "strategic",
+      "description": "Relies heavily on magical abilities"
+    }
+  }
 }

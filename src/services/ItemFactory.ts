@@ -5,10 +5,7 @@ import {
   BaseItem,
   Affix,
   ItemTemplate,
-  EquipmentData,
-  ItemGenerationConfig,
-  KeyData,
-  CraftingData
+  ItemGenerationConfig
 } from '../types/items';
 import {
   ItemRarity,

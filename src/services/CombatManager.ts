@@ -1,6 +1,6 @@
 // Combat Manager - State machine for turn-based combat system
 
-import { makeObservable, observable, action, computed } from 'mobx';
+import { makeObservable, observable, action } from 'mobx';
 import {
   CombatManager as ICombatManager,
   PlayerAction,
@@ -16,16 +16,16 @@ import {
   CombatResult,
   DefeatPenaltyResult
 } from '../types/combat';
-import { Entity, Player, Enemy, CombatParticipant } from '../types/entities';
+import { Entity, Enemy, CombatParticipant } from '../types/entities';
 import { Item, KeyModifier } from '../types/items';
-import { EntityId, DamageInstance } from '../types/base';
+import { EntityId } from '../types/base';
 import { 
   CombatState, 
   CombatAction, 
   RangeState, 
   DamageType, 
   EffectTrigger,
-  DurationUnit 
+ 
 } from '../types/enums';
 import { EffectProcessor, EffectFactory } from './EffectProcessor';
 import { Player as PlayerImpl, Enemy as EnemyImpl } from './Entity';
@@ -56,9 +56,26 @@ export class CombatManager implements ICombatManager {
   // Systems
   private effectProcessor: EffectProcessor;
   private pendingPlayerAction?: PlayerAction;
-  private combatStartTime: number;
+  // private _combatStartTime: number;  // Unused variable
 
   constructor(params: CombatInitParams) {
+    this.player = params.player as PlayerImpl;
+    this.enemies = params.enemies as EnemyImpl[];
+    this.dungeonTier = params.dungeonTier;
+    this.keyModifiers = params.keyModifiers;
+    
+    this.currentState = CombatState.INITIALIZING;
+    this.currentTurn = 1;
+    this.currentParticipantIndex = 0;
+    this.turnOrder = [];
+    this.participants = [];
+    this.rangeStates = new Map();
+    this.combatLog = [];
+    this.damageHistory = [];
+    // this._combatStartTime = Date.now();  // Unused variable
+    
+    this.effectProcessor = new EffectProcessor();
+
     makeObservable(this, {
       currentState: observable,
       participants: observable,
@@ -73,23 +90,6 @@ export class CombatManager implements ICombatManager {
       executePlayerAction: action,
       executeEnemyAction: action
     });
-
-    this.player = params.player as PlayerImpl;
-    this.enemies = params.enemies as EnemyImpl[];
-    this.dungeonTier = params.dungeonTier;
-    this.keyModifiers = params.keyModifiers;
-    
-    this.currentState = CombatState.INITIALIZING;
-    this.currentTurn = 1;
-    this.currentParticipantIndex = 0;
-    this.turnOrder = [];
-    this.participants = [];
-    this.rangeStates = new Map();
-    this.combatLog = [];
-    this.damageHistory = [];
-    this.combatStartTime = Date.now();
-    
-    this.effectProcessor = new EffectProcessor();
     
     this.initializeCombat();
   }
@@ -139,7 +139,7 @@ export class CombatManager implements ICombatManager {
     this.handleBowAdvantage();
   }
 
-  private getInitialRangeForEntity(entity: Entity): RangeState {
+  private getInitialRangeForEntity(_entity: Entity): RangeState {
     // Default to in range, but this could be determined by weapon type
     // Ranged vs ranged should start in range per GDD
     return RangeState.IN_RANGE;
@@ -161,7 +161,7 @@ export class CombatManager implements ICombatManager {
     return weapon?.equipment?.baseType === 'bow';
   }
 
-  private isEnemyMelee(enemy: Enemy): boolean {
+  private isEnemyMelee(_enemy: Enemy): boolean {
     // This would check enemy weapon type or attack pattern
     return true; // Simplified for now
   }
@@ -314,7 +314,7 @@ export class CombatManager implements ICombatManager {
   }
 
   // Range management
-  getRange(entityId1: EntityId, entityId2: EntityId): RangeState {
+  getRange(entityId1: EntityId, _entityId2: EntityId): RangeState {
     // For simplicity, use the attacker's range state
     return this.rangeStates.get(entityId1) || RangeState.IN_RANGE;
   }
@@ -374,7 +374,7 @@ export class CombatManager implements ICombatManager {
     // Process turn start effects
     this.effectProcessor.processEffects(
       EffectTrigger.TURN_START,
-      { targetId: this.player.id, sourceId: this.player.id },
+      { trigger: EffectTrigger.TURN_START, targetId: this.player.id, sourceId: this.player.id },
       this.effectProcessor.getEffects(this.player.id)
     );
     
@@ -429,7 +429,7 @@ export class CombatManager implements ICombatManager {
     }
   }
 
-  private executeBlockAction(action: BlockAction): void {
+  private executeBlockAction(_action: BlockAction): void {
     // Apply block effect exactly per GDD
     this.player.tempStatModifiers.armor = this.player.computedStats.armor; // Double current armor
     
@@ -462,7 +462,7 @@ export class CombatManager implements ICombatManager {
       // Process turn start effects for each enemy
       this.effectProcessor.processEffects(
         EffectTrigger.TURN_START,
-        { targetId: enemy.id, sourceId: enemy.id },
+        { trigger: EffectTrigger.TURN_START, targetId: enemy.id, sourceId: enemy.id },
         this.effectProcessor.getEffects(enemy.id)
       );
       
@@ -492,7 +492,7 @@ export class CombatManager implements ICombatManager {
     for (const entity of [this.player, ...this.enemies]) {
       this.effectProcessor.processEffects(
         EffectTrigger.TURN_END,
-        { targetId: entity.id, sourceId: entity.id },
+        { trigger: EffectTrigger.TURN_END, targetId: entity.id, sourceId: entity.id },
         this.effectProcessor.getEffects(entity.id)
       );
     }
@@ -645,6 +645,7 @@ export class CombatManager implements ICombatManager {
       damage: {
         amount: damage.baseDamage,
         type: damage.damageType,
+        isCritical: damage.criticalSuccess || false,
         source: attackerId
       },
       finalDamage: damage.finalDamage,

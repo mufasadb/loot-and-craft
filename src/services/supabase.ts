@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
+// Environment variables for Vite
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
@@ -9,6 +10,58 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export interface Database {
   public: {
     Tables: {
+      asset_manifests: {
+        Row: {
+          id: string
+          version: string
+          generated: string
+          collections: Record<string, number>
+          total_assets: number
+          created_at: string
+        }
+        Insert: {
+          version: string
+          generated: string
+          collections: Record<string, number>
+          total_assets: number
+          created_at?: string
+        }
+        Update: {
+          version?: string
+          generated?: string
+          collections?: Record<string, number>
+          total_assets?: number
+        }
+      }
+      assets: {
+        Row: {
+          id: string
+          path: string
+          type: string
+          file_size: number
+          last_modified: string
+          tags: string[]
+          usage: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          path: string
+          type: string
+          file_size: number
+          last_modified: string
+          tags?: string[]
+          usage?: string[]
+        }
+        Update: {
+          path?: string
+          type?: string
+          file_size?: number
+          last_modified?: string
+          tags?: string[]
+          usage?: string[]
+        }
+      }
       players: {
         Row: {
           id: string

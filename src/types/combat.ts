@@ -1,9 +1,12 @@
 // Combat system types - state machine, actions, and damage calculations
 
 import { CombatState, CombatAction, RangeState, DamageType } from './enums';
-import { EntityId, DamageInstance, TargetInfo } from './base';
+import { EntityId, DamageInstance } from './base';
 import { Entity, Enemy, Player, CombatParticipant } from './entities';
 import { Item, KeyModifier } from './items';
+
+// Re-export enums for external use
+export { CombatState, CombatAction, RangeState, DamageType };
 
 // Main combat state machine
 export interface CombatManager {

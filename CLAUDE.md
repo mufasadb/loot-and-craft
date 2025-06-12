@@ -71,9 +71,13 @@ README must include:
 - **Performance**: Consider performance implications for real-time game features like combat calculations and rendering
 - **Save System**: Leverage Supabase for persistent game data including character progression, inventory, and world state
 
+## Development Configuration
+- **Development Server**: Runs on port 3003 (http://localhost:3003)
+- **Host Configuration**: Accessible from external devices
+
 ## Commands
 - Test command: npm run test (to be setup with testing framework)
 - Lint command: npm run lint
 - Build command: npm run build
-- Dev command: npm run dev
+- Dev command: npm run dev (starts server on port 3003)
 - Typecheck command: npm run typecheck

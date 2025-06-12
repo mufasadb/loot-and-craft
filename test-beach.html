@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Beach Test</title>
+</head>
+<body>
+    <h1>Beach Button Test</h1>
+    <button id="beach-btn" data-action="go-beach">🏖️ Beach</button>
+    <div id="output"></div>
+    
+    <script>
+        // Simple test to verify event handling
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            const action = target.getAttribute('data-action');
+            
+            if (action === 'go-beach') {
+                console.log('Beach button clicked!');
+                document.getElementById('output').innerHTML = 'Beach button clicked! Check console for details.';
+                
+                // Simulate what should happen
+                console.log('This would call gameStore.startBeachEncounter()');
+            }
+        });
+    </script>
+</body>
+</html>

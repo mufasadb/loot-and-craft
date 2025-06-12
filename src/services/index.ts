@@ -23,8 +23,11 @@ export {
 export { CombatManager } from './CombatManager';
 
 // Asset management (from previous phases)
-export { AssetManager } from './AssetManager';
-export { AssetSearch } from './AssetSearch';
+export { assetManager } from './AssetManager';
+export { assetSearch } from './AssetSearch';
 
 // Supabase integration
 export { supabase, GameDataService } from './supabase';
+
+// Asset service for Supabase integration
+export { AssetService } from './AssetService';

@@ -2,7 +2,7 @@
 
 import { DungeonTheme } from './enums';
 import { Item, KeyModifier } from './items';
-import { Enemy, EnemyTemplate } from './entities';
+import { Enemy } from './entities';
 import { BaseStats } from './base';
 
 // Dungeon key system (per GDD section 2.6)
