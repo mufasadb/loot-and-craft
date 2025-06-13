@@ -3,6 +3,7 @@ import { gameStore } from '../stores/GameStore'
 import { AssetService } from '../services/AssetService'
 import { autorun } from 'mobx'
 import { logger } from '../services/Logger'
+import { CombatState } from '../types/enums'
 
 export class GameLayout {
   private app: HTMLElement
@@ -312,11 +313,224 @@ export class GameLayout {
   }
 
   private renderCombatArena(): string {
+    const combat = gameStore.combatManager;
+    
+    if (!combat) {
+      return `
+        <h2>⚔️ Combat Arena</h2>
+        <div class="combat-error">
+          <p>Combat system not initialized</p>
+          <button class="back-btn" data-action="go-town">← Back to Town</button>
+        </div>
+      `;
+    }
+
     return `
-      <h2>⚔️ Combat Arena</h2>
-      <div class="combat-placeholder">
-        <p>Combat arena will be reimplemented from scratch</p>
-        <button class="back-btn" data-action="go-town">← Back to Town</button>
+      <div class="combat-arena">
+        ${this.renderCombatHeader()}
+        ${this.renderCombatField()}
+        ${this.renderCombatActions()}
+        ${this.renderCombatLog()}
+        ${this.renderCombatResult()}
+      </div>
+    `;
+  }
+
+  private renderCombatHeader(): string {
+    const combat = gameStore.combatManager!;
+    return `
+      <div class="combat-header">
+        <h2>⚔️ Combat - Turn ${combat.currentTurn}</h2>
+        <div class="combat-status">
+          <span class="combat-state">${combat.currentState}</span>
+          <span class="range-indicator">Range Status Available</span>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderCombatField(): string {
+    const combat = gameStore.combatManager!;
+    
+    return `
+      <div class="combat-field">
+        <div class="combatant player-area">
+          ${this.renderPlayerCombatant(combat.player)}
+        </div>
+        <div class="vs-divider">VS</div>
+        <div class="combatant enemy-area">
+          ${combat.enemies.map(enemy => this.renderEnemyCombatant(enemy)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderPlayerCombatant(player: any): string {
+    const healthPercent = Math.max(0, (player.currentHP / player.maxHP) * 100);
+    const manaPercent = player.maxMP > 0 ? Math.max(0, (player.currentMP / player.maxMP) * 100) : 0;
+    
+    return `
+      <div class="combatant-card player-card">
+        <div class="combatant-name">${player.name}</div>
+        <div class="combatant-level">Level ${player.level}</div>
+        
+        <div class="health-bar-container">
+          <div class="stat-label">HP</div>
+          <div class="health-bar">
+            <div class="health-fill" style="width: ${healthPercent}%"></div>
+            <span class="health-text">${player.currentHP}/${player.maxHP}</span>
+          </div>
+        </div>
+        
+        ${player.maxMP > 0 ? `
+          <div class="mana-bar-container">
+            <div class="stat-label">MP</div>
+            <div class="mana-bar">
+              <div class="mana-fill" style="width: ${manaPercent}%"></div>
+              <span class="mana-text">${player.currentMP}/${player.maxMP}</span>
+            </div>
+          </div>
+        ` : ''}
+        
+        <div class="combatant-effects">
+          ${player.activeEffects?.map((effect: any) => 
+            `<span class="effect-badge">${effect.name}</span>`
+          ).join('') || ''}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderEnemyCombatant(enemy: any): string {
+    const healthPercent = Math.max(0, (enemy.currentHP / enemy.maxHP) * 100);
+    const isTargeted = false; // TODO: Implement targeting logic
+    
+    return `
+      <div class="combatant-card enemy-card ${isTargeted ? 'targeted' : ''}" 
+           data-enemy-id="${enemy.id}">
+        <div class="combatant-name">${enemy.name}</div>
+        <div class="combatant-level">Level ${enemy.level}</div>
+        
+        <div class="health-bar-container">
+          <div class="stat-label">HP</div>
+          <div class="health-bar enemy-health">
+            <div class="health-fill" style="width: ${healthPercent}%"></div>
+            <span class="health-text">${enemy.currentHP}/${enemy.maxHP}</span>
+          </div>
+        </div>
+        
+        <div class="combatant-effects">
+          ${enemy.activeEffects?.map((effect: any) => 
+            `<span class="effect-badge">${effect.name}</span>`
+          ).join('') || ''}
+        </div>
+        
+        ${isTargeted ? '<div class="target-indicator">🎯</div>' : ''}
+      </div>
+    `;
+  }
+
+  private renderCombatActions(): string {
+    const combat = gameStore.combatManager!;
+    
+    if (combat.currentState !== CombatState.PLAYER_ACTION_SELECT) {
+      return `
+        <div class="combat-actions disabled">
+          <div class="turn-indicator">
+            ${combat.currentState === CombatState.ENEMY_TURN_START ? 'Enemy Turn...' : 
+              combat.currentState === CombatState.CHECK_VICTORY ? 'Victory!' :
+              combat.currentState === CombatState.CHECK_DEFEAT ? 'Defeat!' :
+              combat.currentState}
+          </div>
+        </div>
+      `;
+    }
+
+    const canAttack = true; // TODO: Implement range checking
+    const canMove = false; // TODO: Implement range checking
+    
+    return `
+      <div class="combat-actions">
+        <div class="action-row primary-actions">
+          <button class="action-btn attack-btn ${!canAttack ? 'disabled' : ''}" 
+                  data-action="combat-attack" ${!canAttack ? 'disabled' : ''}>
+            ⚔️ Attack
+          </button>
+          <button class="action-btn block-btn" data-action="combat-block">
+            🛡️ Block
+          </button>
+          <button class="action-btn move-btn ${!canMove ? 'disabled' : ''}" 
+                  data-action="combat-move" ${!canMove ? 'disabled' : ''}>
+            🏃 Move In
+          </button>
+        </div>
+        
+        <div class="action-row secondary-actions">
+          <!-- TODO: Implement abilities display -->
+        </div>
+        
+        <div class="action-row utility-actions">
+          <button class="action-btn escape-btn" data-action="combat-escape">
+            🏃‍♂️ Escape
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderCombatLog(): string {
+    const combat = gameStore.combatManager!;
+    const logs = combat.combatLog || [];
+    
+    return `
+      <div class="combat-log">
+        <h3>Combat Log</h3>
+        <div class="log-entries">
+          ${logs.slice(-10).map(log => `
+            <div class="log-entry ${log.type} ${log.emphasis ? 'emphasis' : ''}" 
+                 style="${log.color ? `color: ${log.color}` : ''}">
+              <span class="log-turn">[T${log.turn}]</span>
+              <span class="log-message">${log.message}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderCombatResult(): string {
+    const combat = gameStore.combatManager!;
+    
+    if (combat.currentState !== CombatState.CHECK_VICTORY && combat.currentState !== CombatState.CHECK_DEFEAT && combat.currentState !== CombatState.COMBAT_END) {
+      return '';
+    }
+
+    const result = combat.getCombatResult();
+    
+    return `
+      <div class="combat-result-overlay">
+        <div class="combat-result">
+          <h2>${result.outcome === 'victory' ? '🎉 Victory!' : 
+                 result.outcome === 'defeat' ? '💀 Defeat!' : 
+                 '🏃‍♂️ Escaped!'}</h2>
+          
+          <div class="result-details">
+            ${result.experience && result.experience > 0 ? `<p>Experience Gained: +${result.experience}</p>` : ''}
+            ${result.gold && result.gold > 0 ? `<p>Gold Gained: +${result.gold}</p>` : ''}
+            ${result.loot && result.loot.length > 0 ? `
+              <div class="items-gained">
+                <p>Items Found:</p>
+                <ul>
+                  ${result.loot.map((item: any) => `<li>${item.name}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+          
+          <button class="action-btn continue-btn" data-action="go-town">
+            Continue
+          </button>
+        </div>
       </div>
     `;
   }
@@ -449,7 +663,11 @@ export class GameLayout {
       button.addEventListener('click', this.handleFilter.bind(this))
     })
 
-    // Combat component removed - no special setup needed
+    // Enemy targeting for combat
+    const enemyCards = this.app.querySelectorAll('[data-enemy-id]')
+    enemyCards.forEach(card => {
+      card.addEventListener('click', this.handleEnemyTarget.bind(this))
+    })
   }
 
 
@@ -484,8 +702,24 @@ export class GameLayout {
         gameStore.startBeachEncounter()
         break
       case 'enter-combat':
-        // Enter combat mode for testing
+        // Enter combat mode for testing with mock data
+        this.createMockCombat()
         gameStore.setCurrentScreen('combat')
+        break
+      case 'combat-attack':
+        this.handleCombatAttack()
+        break
+      case 'combat-block':
+        this.handleCombatBlock()
+        break
+      case 'combat-move':
+        this.handleCombatMove()
+        break
+      case 'combat-ability':
+        this.handleCombatAbility(target)
+        break
+      case 'combat-escape':
+        this.handleCombatEscape()
         break
     }
   }
@@ -497,5 +731,168 @@ export class GameLayout {
     if (filter) {
       uiStore.setInventoryFilter(filter)
     }
+  }
+
+  private handleCombatAttack() {
+    const combat = gameStore.combatManager
+    if (!combat || combat.currentState !== CombatState.PLAYER_ACTION_SELECT) return
+
+    try {
+      const action = {
+        type: 'ATTACK' as const,
+        isValid: true,
+        executionOrder: 1,
+        manaCost: 0,
+        canBeCountered: true
+      }
+      combat.executePlayerAction(action as any)
+      // MobX autorun will handle re-rendering
+    } catch (error) {
+      console.error('Combat attack failed:', error)
+    }
+  }
+
+  private handleCombatBlock() {
+    const combat = gameStore.combatManager
+    if (!combat || combat.currentState !== CombatState.PLAYER_ACTION_SELECT) return
+
+    try {
+      const action = {
+        type: 'BLOCK' as const,
+        isValid: true,
+        executionOrder: 1,
+        manaCost: 0,
+        canBeCountered: false
+      }
+      combat.executePlayerAction(action as any)
+      // MobX autorun will handle re-rendering
+    } catch (error) {
+      console.error('Combat block failed:', error)
+    }
+  }
+
+  private handleCombatMove() {
+    const combat = gameStore.combatManager
+    if (!combat || combat.currentState !== CombatState.PLAYER_ACTION_SELECT) return
+
+    try {
+      const action = {
+        type: 'MOVE' as const,
+        isValid: true,
+        executionOrder: 1,
+        manaCost: 0,
+        canBeCountered: false
+      }
+      combat.executePlayerAction(action as any)
+      // MobX autorun will handle re-rendering
+    } catch (error) {
+      console.error('Combat move failed:', error)
+    }
+  }
+
+  private handleCombatAbility(target: HTMLElement) {
+    const combat = gameStore.combatManager
+    if (!combat || combat.currentState !== CombatState.PLAYER_ACTION_SELECT) return
+
+    const abilityId = target.getAttribute('data-ability-id')
+    if (!abilityId) return
+
+    try {
+      const action = {
+        type: 'TOGGLE_ABILITY' as const,
+        abilityId: abilityId,
+        isValid: true,
+        executionOrder: 1,
+        manaCost: 0,
+        canBeCountered: true
+      }
+      combat.executePlayerAction(action as any)
+      // MobX autorun will handle re-rendering
+    } catch (error) {
+      console.error('Combat ability failed:', error)
+    }
+  }
+
+  private handleCombatEscape() {
+    const combat = gameStore.combatManager
+    if (!combat || combat.currentState !== CombatState.PLAYER_ACTION_SELECT) return
+
+    try {
+      const action = {
+        type: 'ESCAPE' as const,
+        isValid: true,
+        executionOrder: 1,
+        manaCost: 0,
+        canBeCountered: false
+      }
+      combat.executePlayerAction(action as any)
+      // MobX autorun will handle re-rendering
+    } catch (error) {
+      console.error('Combat escape failed:', error)
+    }
+  }
+
+  private handleEnemyTarget(event: Event) {
+    const target = event.currentTarget as HTMLElement
+    const enemyId = target.getAttribute('data-enemy-id')
+    const combat = gameStore.combatManager
+    
+    if (!combat || !enemyId) return
+
+    try {
+      // TODO: Implement enemy targeting logic
+      console.log('Enemy targeted:', enemyId)
+      // MobX autorun will handle re-rendering
+    } catch (error) {
+      console.error('Enemy targeting failed:', error)
+    }
+  }
+
+  private createMockCombat() {
+    // Create a simplified mock combat manager for UI testing
+    const mockCombat = {
+      currentState: CombatState.PLAYER_ACTION_SELECT,
+      currentTurn: 1,
+      player: {
+        name: 'Adventurer',
+        level: 1,
+        currentHP: 80,
+        maxHP: 100,
+        currentMP: 30,
+        maxMP: 50,
+        activeEffects: []
+      },
+      enemies: [
+        {
+          id: 'enemy-1',
+          name: 'River Goblin',
+          level: 1,
+          currentHP: 40,
+          maxHP: 60,
+          activeEffects: []
+        }
+      ],
+      combatLog: [
+        { turn: 1, message: 'Combat begins!', type: 'system', timestamp: Date.now() },
+        { turn: 1, message: 'River Goblin appears!', type: 'action', timestamp: Date.now() }
+      ],
+      getCombatResult: () => ({
+        outcome: 'victory' as const,
+        experience: 25,
+        gold: 10,
+        loot: [],
+        totalDamageDealt: 50,
+        totalDamageTaken: 20,
+        turnsElapsed: 3,
+        abilitiesUsed: [],
+        combatLog: []
+      }),
+      executePlayerAction: async (action: any) => {
+        console.log('Mock action executed:', action.type)
+      }
+    }
+    
+    // Set the mock combat manager
+    gameStore.combatManager = mockCombat as any
   }
 }

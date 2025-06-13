@@ -1193,3 +1193,472 @@ body {
   }
 }
 
+/* Combat UI Styles */
+.combat-arena {
+  padding: 20px;
+  background: var(--combat-bg);
+  border: 2px solid var(--combat-border);
+  border-radius: 8px;
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.combat-header {
+  text-align: center;
+  border-bottom: 2px solid var(--combat-border);
+  padding-bottom: 15px;
+}
+
+.combat-header h2 {
+  margin: 0 0 10px 0;
+  color: var(--text-accent);
+}
+
+.combat-status {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 14px;
+}
+
+.combat-state {
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.range-indicator {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.range-indicator.in_range {
+  background: var(--success);
+  color: white;
+}
+
+.range-indicator.out_of_range {
+  background: var(--warning);
+  color: black;
+}
+
+.combat-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex: 1;
+  min-height: 200px;
+}
+
+.combatant {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vs-divider {
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--text-accent);
+  margin: 0 20px;
+}
+
+.combatant-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 15px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.player-card {
+  border-color: var(--success);
+}
+
+.enemy-card {
+  border-color: var(--danger);
+  cursor: pointer;
+}
+
+.enemy-card:hover {
+  border-color: var(--text-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3);
+}
+
+.enemy-card.targeted {
+  border-color: var(--text-accent);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.combatant-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+}
+
+.combatant-level {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.health-bar-container, .mana-bar-container {
+  margin: 8px 0;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+}
+
+.health-bar, .mana-bar {
+  width: 100%;
+  height: 20px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.health-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--health-color), #ff4444);
+  transition: width 0.5s ease;
+  border-radius: 9px;
+}
+
+.enemy-health .health-fill {
+  background: linear-gradient(90deg, var(--enemy-health-color), #cc1111);
+}
+
+.mana-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mana-color), #4488ff);
+  transition: width 0.5s ease;
+  border-radius: 9px;
+}
+
+.health-text, .mana-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.combatant-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.effect-badge {
+  background: var(--effect-bg);
+  border: 1px solid var(--effect-border);
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 10px;
+  color: var(--effect-border);
+}
+
+.target-indicator {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 20px;
+  animation: pulse 1s infinite;
+}
+
+.combat-actions {
+  background: var(--bg-secondary);
+  border: 2px solid var(--combat-border);
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.combat-actions.disabled {
+  opacity: 0.6;
+  text-align: center;
+  padding: 20px;
+}
+
+.turn-indicator {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-accent);
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.action-row:last-child {
+  margin-bottom: 0;
+}
+
+.action-btn {
+  background: var(--action-bg);
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-btn:hover:not(.disabled) {
+  background: var(--action-hover);
+  border-color: var(--text-accent);
+  transform: translateY(-1px);
+}
+
+.action-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--bg-tertiary);
+}
+
+.attack-btn:hover:not(.disabled) {
+  border-color: var(--danger);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+}
+
+.block-btn:hover:not(.disabled) {
+  border-color: var(--success);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.move-btn:hover:not(.disabled) {
+  border-color: var(--warning);
+  box-shadow: 0 0 8px rgba(255, 140, 0, 0.4);
+}
+
+.ability-btn:hover:not(.disabled) {
+  border-color: var(--mana-color);
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+}
+
+.escape-btn:hover:not(.disabled) {
+  border-color: var(--text-secondary);
+  box-shadow: 0 0 8px rgba(176, 176, 176, 0.4);
+}
+
+.combat-log {
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 15px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.combat-log h3 {
+  margin: 0 0 10px 0;
+  color: var(--text-accent);
+  font-size: 16px;
+}
+
+.log-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-entry {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.3;
+  border-left: 3px solid transparent;
+}
+
+.log-entry.damage {
+  background: rgba(220, 38, 38, 0.1);
+  border-left-color: var(--danger);
+}
+
+.log-entry.heal {
+  background: rgba(34, 197, 94, 0.1);
+  border-left-color: var(--success);
+}
+
+.log-entry.effect {
+  background: rgba(37, 99, 235, 0.1);
+  border-left-color: var(--mana-color);
+}
+
+.log-entry.action {
+  background: rgba(255, 140, 0, 0.1);
+  border-left-color: var(--warning);
+}
+
+.log-entry.system {
+  background: rgba(176, 176, 176, 0.1);
+  border-left-color: var(--text-secondary);
+}
+
+.log-entry.emphasis {
+  font-weight: bold;
+  animation: highlight 0.5s ease;
+}
+
+.log-turn {
+  color: var(--text-secondary);
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.log-message {
+  color: var(--text-primary);
+}
+
+.combat-result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.combat-result {
+  background: var(--bg-secondary);
+  border: 3px solid var(--text-accent);
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+  max-width: 400px;
+  animation: slideIn 0.3s ease;
+}
+
+.combat-result h2 {
+  margin: 0 0 20px 0;
+  color: var(--text-accent);
+  font-size: 24px;
+}
+
+.result-details {
+  margin: 20px 0;
+  text-align: left;
+}
+
+.result-details p {
+  margin: 8px 0;
+  color: var(--text-primary);
+}
+
+.items-gained {
+  margin-top: 15px;
+}
+
+.items-gained ul {
+  margin: 8px 0;
+  padding-left: 20px;
+  color: var(--text-accent);
+}
+
+.continue-btn {
+  background: var(--success);
+  border: 2px solid var(--success);
+  color: white;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.continue-btn:hover {
+  background: #16a34a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3);
+}
+
+.combat-error {
+  text-align: center;
+  padding: 40px;
+  color: var(--danger);
+}
+
+@keyframes highlight {
+  0% { background-color: rgba(255, 215, 0, 0.3); }
+  100% { background-color: transparent; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(-20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Responsive design for combat UI */
+@media (max-width: 768px) {
+  .combat-field {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .vs-divider {
+    transform: rotate(90deg);
+    margin: 10px 0;
+  }
+  
+  .action-row {
+    justify-content: center;
+  }
+  
+  .action-btn {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .combat-log {
+    max-height: 150px;
+  }
+}
+

@@ -1,6 +1,7 @@
 import { makeObservable, observable, action } from 'mobx'
 import { assetManager } from '../services/AssetManager'
 import { Player, Enemy } from '../services/Entity'
+import { CombatManager } from '../services/CombatManager'
 import { StartingClass, EnemyType, DungeonTheme, RangeState } from '../types/enums'
 
 export interface GameState {
@@ -9,6 +10,7 @@ export interface GameState {
   player: Player | null
   currentEnemy: Enemy | null
   currentEnemies: Enemy[]
+  combatManager: CombatManager | null
 }
 
 interface EnemyTemplate {
@@ -58,6 +60,7 @@ export class GameStore {
   player: Player | null = null
   currentEnemy: Enemy | null = null
   currentEnemies: Enemy[] = []
+  combatManager: CombatManager | null = null
   private enemyData: EnemyData | null = null
 
   constructor() {
@@ -67,6 +70,7 @@ export class GameStore {
       player: observable,
       currentEnemy: observable,
       currentEnemies: observable,
+      combatManager: observable,
       setLoading: action,
       setCurrentScreen: action,
       setPlayer: action,
@@ -75,7 +79,8 @@ export class GameStore {
       initializeGame: action,
       createTestEnemy: action,
       createEnemyFromTemplate: action,
-      generateRandomEncounter: action
+      generateRandomEncounter: action,
+      startBeachEncounter: action
     })
   }
 
@@ -473,6 +478,15 @@ export class GameStore {
     // Generate random river encounter (1-5 enemies)
     const enemies = this.generateRandomEncounter(DungeonTheme.RIVER, 1)
     this.setCurrentEnemies(enemies)
+    
+    // Initialize combat manager
+    this.combatManager = new CombatManager({
+      player: this.player,
+      enemies: enemies,
+      dungeonTier: 1,
+      keyModifiers: [],
+      allowEscape: true
+    })
     
     // Switch to combat screen
     this.setCurrentScreen('combat')
