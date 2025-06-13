@@ -2,14 +2,12 @@ import { uiStore } from '../stores/UIStore'
 import { gameStore } from '../stores/GameStore'
 import { AssetService } from '../services/AssetService'
 import { autorun } from 'mobx'
-import { CombatArena } from './CombatArena'
 import { logger } from '../services/Logger'
 
 export class GameLayout {
   private app: HTMLElement
   private disposer: (() => void) | null = null
   private dragCleanupFunctions: (() => void)[] = []
-  private combatArena: CombatArena | null = null
   private backgroundAssets: {
     panel?: string;
     container?: string;
@@ -314,11 +312,13 @@ export class GameLayout {
   }
 
   private renderCombatArena(): string {
-    // Initialize CombatArena component if not already done
-    if (!this.combatArena) {
-      this.combatArena = new CombatArena();
-    }
-    return this.combatArena.render();
+    return `
+      <h2>⚔️ Combat Arena</h2>
+      <div class="combat-placeholder">
+        <p>Combat arena will be reimplemented from scratch</p>
+        <button class="back-btn" data-action="go-town">← Back to Town</button>
+      </div>
+    `;
   }
 
   private renderDungeonSelection(): string {
@@ -449,18 +449,9 @@ export class GameLayout {
       button.addEventListener('click', this.handleFilter.bind(this))
     })
 
-    // Setup combat component event listeners if in combat mode
-    if (uiStore.centerContent === 'combat' && this.combatArena) {
-      // The combat components handle their own event listeners
-      // Just ensure they're initialized
-      this.setupCombatEventListeners()
-    }
+    // Combat component removed - no special setup needed
   }
 
-  private setupCombatEventListeners() {
-    // Combat action buttons are handled by the CombatArena component internally
-    // This method can be used for any additional combat-specific event handling
-  }
 
   private handleAction(event: Event) {
     const target = event.target as HTMLElement

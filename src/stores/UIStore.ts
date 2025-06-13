@@ -81,16 +81,6 @@ export class UIStore {
     this.setRightPanelOpen(!this.rightPanelOpen)
   }
 
-  // Auto-close inventory panel when entering combat on mobile
-  enterCombat() {
-    this.setCenterContent('combat')
-    if (this.isMobile) {
-      this.setRightPanelOpen(false)
-    }
-    
-    // Enemy creation will be handled by the CombatArena component
-    // to avoid circular imports
-  }
 
   // Navigation helpers
   goToTown() {

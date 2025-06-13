@@ -51,7 +51,8 @@
       "Bash(npm run test:*)",
       "Bash(echo:*)",
       "Bash(kill:*)",
-      "mcp__browser-tools__getConsoleLogs"
+      "mcp__browser-tools__getConsoleLogs",
+      "Bash(pgrep:*)"
     ],
     "deny": []
   }
