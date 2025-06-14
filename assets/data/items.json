@@ -76,6 +76,21 @@
       "minDungeonTier": 1,
       "iconPath": "items/weapons/war_hammer.png",
       "description": "A heavy hammer that can crush through armor"
+    },
+    {
+      "id": "flame_blade_sword",
+      "name": "Flame Blade Sword",
+      "type": "equipment",
+      "rarity": "magic",
+      "slot": "weapon",
+      "baseType": "sword",
+      "inherentStats": { "damage": 15, "armor": 0, "maxHealth": 0, "maxMana": 15, "maxEnergyShield": 0, "initiative": 1, "level": 1 },
+      "grantedAbilities": ["basic_attack", "flame_blade"],
+      "levelRequirement": 3,
+      "dropWeight": 40,
+      "minDungeonTier": 2,
+      "iconPath": "items/weapons/flame_blade_sword.png",
+      "description": "A magical sword that can be ignited with flames"
     }
   ],
   "armor": [
@@ -134,6 +149,21 @@
       "minDungeonTier": 1,
       "iconPath": "items/armor/leather_boots.png",
       "description": "Comfortable leather boots for mobility"
+    },
+    {
+      "id": "wind_step_boots",
+      "name": "Wind Step Boots",
+      "type": "equipment",
+      "rarity": "magic",
+      "slot": "boots",
+      "baseType": "light",
+      "inherentStats": { "damage": 0, "armor": 4, "maxHealth": 8, "maxMana": 10, "maxEnergyShield": 0, "initiative": 4, "level": 1 },
+      "grantedAbilities": ["wind_step"],
+      "levelRequirement": 3,
+      "dropWeight": 35,
+      "minDungeonTier": 2,
+      "iconPath": "items/armor/wind_step_boots.png",
+      "description": "Enchanted boots that allow swift movement"
     },
     {
       "id": "iron_helmet",
@@ -250,6 +280,21 @@
       "minDungeonTier": 1,
       "iconPath": "items/accessories/bronze_amulet.png",
       "description": "A protective bronze amulet worn around the neck"
+    },
+    {
+      "id": "ice_armor_ring",
+      "name": "Ice Armor Ring",
+      "type": "equipment",
+      "rarity": "magic",
+      "slot": "ring1",
+      "baseType": "ring",
+      "inherentStats": { "damage": 0, "armor": 2, "maxHealth": 0, "maxMana": 20, "maxEnergyShield": 8, "initiative": 0, "level": 1 },
+      "grantedAbilities": ["ice_armor"],
+      "levelRequirement": 4,
+      "dropWeight": 30,
+      "minDungeonTier": 3,
+      "iconPath": "items/accessories/ice_armor_ring.png",
+      "description": "A frigid ring that can conjure protective ice"
     }
   ],
   "crafting": [

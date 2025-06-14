@@ -73,7 +73,9 @@ export interface EffectContext {
 export interface EffectResult {
   success: boolean;
   message?: string;
-  statModifiers?: Partial<BaseStats>;
+  statModifiers?: Partial<BaseStats> & {
+    damageMultiplier?: number;
+  };
   damage?: {
     amount: number;
     type: string;
@@ -98,6 +100,12 @@ export interface EffectResult {
     canAct?: boolean;
   };
   preventAction?: boolean;
+  preventsDamage?: boolean;
+  reflectDamage?: {
+    amount: number;
+    targetId: EntityId;
+    type: string;
+  };
   additionalEffects?: string[]; // IDs of effects to add
   removeEffects?: string[]; // IDs of effects to remove
 }

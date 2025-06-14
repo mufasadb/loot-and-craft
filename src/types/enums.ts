@@ -125,6 +125,7 @@ export enum RangeState {
 export enum CombatAction {
   ATTACK = 'attack',
   BLOCK = 'block',
+  CAST_ABILITY = 'cast_ability',
   TOGGLE_ABILITY = 'toggle_ability',
   MOVE = 'move',
   ESCAPE = 'escape'

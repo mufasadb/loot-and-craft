@@ -478,9 +478,200 @@ export class EffectProcessor implements IEffectProcessor {
       this.entityEffects.set(targetId, remaining);
     }
   }
+
+  applyStatusEffect(targetId: EntityId, statusEffectId: string, duration: number, sourceId?: EntityId): void {
+    const durationInfo: DurationInfo = {
+      amount: duration,
+      unit: DurationUnit.TURNS
+    };
+
+    let effect: CombatEffect | undefined;
+
+    switch (statusEffectId) {
+      case 'ice_armor_active':
+        effect = EffectFactory.createIceArmor({
+          duration: durationInfo,
+          armorBonus: 1.0,
+          reflectDamage: 5,
+          sourceId
+        });
+        break;
+      case 'flame_blade_active':
+        effect = EffectFactory.createFlameBlade({
+          duration: durationInfo,
+          damageBonus: 1.25,
+          sourceId
+        });
+        break;
+      case 'wind_step_active':
+        effect = EffectFactory.createWindStep({
+          duration: durationInfo,
+          dodgeBonus: 0.25,
+          sourceId
+        });
+        break;
+      case 'ignite':
+        effect = EffectFactory.createIgnite({
+          duration: durationInfo,
+          damagePerTurn: 8,
+          sourceId
+        });
+        break;
+      case 'chill':
+        effect = EffectFactory.createChill({
+          duration: durationInfo,
+          movementSpeedReduction: 0.5,
+          actionDelayTurns: 1,
+          sourceId
+        });
+        break;
+      case 'freeze':
+        effect = EffectFactory.createFreeze({
+          duration: durationInfo,
+          sourceId
+        });
+        break;
+      default:
+        console.warn(`Unknown status effect: ${statusEffectId}`);
+        return;
+    }
+
+    if (effect) {
+      this.addEffect(targetId, effect);
+    }
+  }
 }
 
 // Effect factory functions for easy creation
+// Ice Armor Effect - increases armor and reflects damage
+export class IceArmorEffectImpl extends BaseCombatEffect {
+  triggers = [EffectTrigger.CONTINUOUS, EffectTrigger.AFTER_DAMAGE_TAKEN];
+  armorBonus: number;
+  reflectDamage: number;
+
+  constructor(config: {
+    id: string;
+    duration: DurationInfo;
+    armorBonus: number;
+    reflectDamage: number;
+    sourceId?: EntityId;
+  }) {
+    super({
+      id: config.id,
+      name: 'Ice Armor',
+      triggers: [EffectTrigger.CONTINUOUS, EffectTrigger.AFTER_DAMAGE_TAKEN],
+      duration: config.duration,
+      visible: true,
+      stackable: false,
+      sourceId: config.sourceId
+    });
+
+    this.armorBonus = config.armorBonus;
+    this.reflectDamage = config.reflectDamage;
+  }
+
+  process(context: EffectContext): EffectResult {
+    if (context.trigger === EffectTrigger.CONTINUOUS) {
+      // Apply armor bonus
+      return {
+        success: true,
+        statModifiers: {
+          armor: this.armorBonus
+        }
+      };
+    } else if (context.trigger === EffectTrigger.AFTER_DAMAGE_TAKEN && context.attackerId) {
+      // Reflect cold damage back to attacker
+      return {
+        success: true,
+        reflectDamage: {
+          amount: this.reflectDamage,
+          targetId: context.attackerId,
+          type: 'ice'
+        }
+      };
+    }
+    return { success: false };
+  }
+}
+
+// Flame Blade Effect - increases weapon damage
+export class FlameBladeEffectImpl extends BaseCombatEffect {
+  triggers = [EffectTrigger.CONTINUOUS];
+  damageBonus: number;
+
+  constructor(config: {
+    id: string;
+    duration: DurationInfo;
+    damageBonus: number;
+    sourceId?: EntityId;
+  }) {
+    super({
+      id: config.id,
+      name: 'Flame Blade',
+      triggers: [EffectTrigger.CONTINUOUS],
+      duration: config.duration,
+      visible: true,
+      stackable: false,
+      sourceId: config.sourceId
+    });
+
+    this.damageBonus = config.damageBonus;
+  }
+
+  process(context: EffectContext): EffectResult {
+    if (context.trigger === EffectTrigger.CONTINUOUS) {
+      // Apply damage multiplier
+      return {
+        success: true,
+        statModifiers: {
+          damageMultiplier: this.damageBonus
+        }
+      };
+    }
+    return { success: false };
+  }
+}
+
+// Wind Step Effect - increases dodge chance
+export class WindStepEffectImpl extends BaseCombatEffect {
+  triggers = [EffectTrigger.BEFORE_DAMAGE_TAKEN];
+  dodgeBonus: number;
+
+  constructor(config: {
+    id: string;
+    duration: DurationInfo;
+    dodgeBonus: number;
+    sourceId?: EntityId;
+  }) {
+    super({
+      id: config.id,
+      name: 'Wind Step',
+      triggers: [EffectTrigger.BEFORE_DAMAGE_TAKEN],
+      duration: config.duration,
+      visible: true,
+      stackable: false,
+      sourceId: config.sourceId
+    });
+
+    this.dodgeBonus = config.dodgeBonus;
+  }
+
+  process(context: EffectContext): EffectResult {
+    if (context.trigger === EffectTrigger.BEFORE_DAMAGE_TAKEN) {
+      // Apply dodge chance
+      const dodgeRoll = Math.random();
+      if (dodgeRoll < this.dodgeBonus) {
+        return {
+          success: true,
+          preventsDamage: true,
+          message: 'Attack dodged with wind step!'
+        };
+      }
+    }
+    return { success: false };
+  }
+}
+
 export const EffectFactory = {
   createIgnite: (config: { 
     duration: DurationInfo; 
@@ -546,6 +737,40 @@ export const EffectFactory = {
   }): LifeStealEffect => {
     return new LifeStealEffectImpl({
       id: `lifesteal_${config.abilityId}_${Date.now()}`,
+      ...config
+    });
+  },
+
+  createIceArmor: (config: {
+    duration: DurationInfo;
+    armorBonus: number;
+    reflectDamage: number;
+    sourceId?: EntityId;
+  }) => {
+    return new IceArmorEffectImpl({
+      id: `ice_armor_${Date.now()}_${Math.random()}`,
+      ...config
+    });
+  },
+
+  createFlameBlade: (config: {
+    duration: DurationInfo;
+    damageBonus: number;
+    sourceId?: EntityId;
+  }) => {
+    return new FlameBladeEffectImpl({
+      id: `flame_blade_${Date.now()}_${Math.random()}`,
+      ...config
+    });
+  },
+
+  createWindStep: (config: {
+    duration: DurationInfo;
+    dodgeBonus: number;
+    sourceId?: EntityId;
+  }) => {
+    return new WindStepEffectImpl({
+      id: `wind_step_${Date.now()}_${Math.random()}`,
       ...config
     });
   }

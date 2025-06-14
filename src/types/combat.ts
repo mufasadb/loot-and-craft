@@ -96,6 +96,23 @@ export interface BlockAction extends PlayerAction {
   duration: 1;                // Lasts until end of turn
 }
 
+// Ability casting action
+export interface CastAbilityAction extends PlayerAction {
+  type: CombatAction.CAST_ABILITY;
+  abilityId: string;
+  targetId?: string;
+  
+  // Ability properties from data
+  manaCost: number;
+  cooldown: number;
+  targetType: string;
+  effectType: string;
+  magnitude: number;
+  statusEffectChance: number;
+  statusEffect?: string;
+  duration?: number;
+}
+
 // Ability toggle action
 export interface ToggleAbilityAction extends PlayerAction {
   type: CombatAction.TOGGLE_ABILITY;
@@ -188,7 +205,7 @@ export interface DamageRecord {
 export interface CombatLogEntry {
   turn: number;
   message: string;
-  type: 'damage' | 'heal' | 'effect' | 'action' | 'system';
+  type: 'damage' | 'heal' | 'effect' | 'action' | 'system' | 'error' | 'buff' | 'debuff';
   entityId?: EntityId;
   
   // Visual styling

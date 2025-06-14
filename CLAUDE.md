@@ -11,9 +11,6 @@ This project manages a current to-do, but there is more detail in the project pl
 ## Asset Management
 Prioritize using assets from the existing manifest collection whenever visual elements are needed. The manifest contains organized categories including Fantasy Icons, Classic RPG GUI elements, and game-specific assets.
 
-## Supabase Integration
-Use the Supabase instance for project structure persistence. Update it after each change and use it when trying to find information about where code lives.
-
 ## Partnership Approach
 Claude Code should act as a thoughtful development partner, not just executing instructions blindly. Always:
 - Critically evaluate each task for context and potential unintended impacts
@@ -34,50 +31,10 @@ All development must follow TDD principles:
 - Write production-ready code, not placeholders
 - Follow existing code patterns and conventions
 
-## Technical Documentation
-Maintain a `tech-notes.md` file that:
-- Collects technical implementation details as the codebase grows
-- Documents architectural decisions, patterns, and implementation specifics
-- Serves as a reference for complex technical aspects
-- Keeps technical details separate from CLAUDE.md
-- Should be updated continuously as features are developed
-
-## Task Management
-Maintain a `current-todo.md` file that:
-- Contains detailed documentation of current and upcoming actions
-- Provides continuity in case of disconnection or context switches
-- Helps maintain focus on the current task flow
-- Should be updated in real-time as tasks progress
-- Includes both immediate next steps and broader project goals
-
-## Deployment
-### Feature Completion
-- Before pushing confirm that no api keys are going into the repo, update git ignore if need be
-- Commit and push all completed features to GitHub
-- Ensure Docker images are built and pushed to Docker Hub
-
-### Documentation Requirements
-README must include:
-- Container paths and volume mappings
-- Environment variables and configuration
-- Unraid-specific deployment instructions
-- Port mappings and networking requirements
-
 ## Game Development Standards
 - **Game Balance**: When implementing game mechanics (combat, crafting, progression), consider balance implications and reference existing game data in `assets/data/`
 - **UI Consistency**: Follow the Classic RPG GUI patterns established in the asset collection for consistent visual design
 - **State Management**: Use the established GameStore and UIStore patterns for game state. Keep game logic separate from UI logic
 - **Data Structure**: Follow the type definitions in `src/types/` for entities, items, combat, and other game systems
 - **Performance**: Consider performance implications for real-time game features like combat calculations and rendering
-- **Save System**: Leverage Supabase for persistent game data including character progression, inventory, and world state
-
-## Development Configuration
-- **Development Server**: Runs on port 3003 (http://localhost:3003)
-- **Host Configuration**: Accessible from external devices
-
-## Commands
-- Test command: npm run test (to be setup with testing framework)
-- Lint command: npm run lint
-- Build command: npm run build
-- Dev command: npm run dev (starts server on port 3003)
-- Typecheck command: npm run typecheck
+- **Save System**: Supabase infrastructure is configured with database schema for players, items, and game sessions. The `GameDataService` class provides methods for data persistence, but the main game currently runs in local mode. When implementing save functionality, use the existing service layer to persist character progression, inventory, and world state.

@@ -430,6 +430,123 @@ export class GameLayout {
     `;
   }
 
+  private renderAbilityButtons(): string {
+    const player = gameStore.player;
+    if (!player) return '';
+
+    const abilities: string[] = [];
+    
+    // Collect abilities from equipped items
+    Object.values(player.equipment).forEach((item: any) => {
+      if (item && item.equipment?.grantedAbilities) {
+        abilities.push(...item.equipment.grantedAbilities);
+      }
+    });
+
+    // Remove duplicates and filter out basic attacks
+    const uniqueAbilities = [...new Set(abilities)].filter(ability => 
+      ability !== 'basic_attack' && ability !== 'ranged_attack'
+    );
+
+    if (uniqueAbilities.length === 0) {
+      return '<p class="no-abilities">No abilities available</p>';
+    }
+
+    return uniqueAbilities.map(abilityId => {
+      const abilityName = this.getAbilityDisplayName(abilityId);
+      const manaCost = this.getAbilityManaCost(abilityId);
+      const canCast = player.currentMana >= manaCost;
+      
+      return `
+        <button class="action-btn ability-btn ${!canCast ? 'disabled' : ''}" 
+                data-action="combat-ability" 
+                data-ability-id="${abilityId}" 
+                ${!canCast ? 'disabled' : ''}>
+          ✨ ${abilityName} (${manaCost} MP)
+        </button>
+      `;
+    }).join('');
+  }
+
+  private getAbilityDisplayName(abilityId: string): string {
+    const displayNames: { [key: string]: string } = {
+      'ice_armor': 'Ice Armor',
+      'flame_blade': 'Flame Blade', 
+      'wind_step': 'Wind Step',
+      'fireball': 'Fireball',
+      'ice_shard': 'Ice Shard',
+      'lightning_bolt': 'Lightning Bolt',
+      'heal': 'Heal',
+      'shield_bash': 'Shield Bash',
+      'crushing_blow': 'Crushing Blow'
+    };
+    return displayNames[abilityId] || abilityId.replace(/_/g, ' ');
+  }
+
+  private getAbilityManaCost(abilityId: string): number {
+    const manaCosts: { [key: string]: number } = {
+      'ice_armor': 30,
+      'flame_blade': 25,
+      'wind_step': 20,
+      'fireball': 25,
+      'ice_shard': 20,
+      'lightning_bolt': 30,
+      'heal': 15,
+      'shield_bash': 12,
+      'crushing_blow': 20
+    };
+    return manaCosts[abilityId] || 10;
+  }
+
+  private getAbilityData(abilityId: string): any {
+    const abilities: { [key: string]: any } = {
+      'ice_armor': {
+        cooldown: 5,
+        targetType: 'self',
+        effectType: 'defensive',
+        magnitude: 1.0,
+        statusEffectChance: 100,
+        statusEffect: 'ice_armor_active',
+        duration: 3
+      },
+      'flame_blade': {
+        cooldown: 4,
+        targetType: 'self',
+        effectType: 'buff',
+        magnitude: 1.0,
+        statusEffectChance: 100,
+        statusEffect: 'flame_blade_active',
+        duration: 3
+      },
+      'wind_step': {
+        cooldown: 3,
+        targetType: 'self',
+        effectType: 'buff',
+        magnitude: 1.0,
+        statusEffectChance: 100,
+        statusEffect: 'wind_step_active',
+        duration: 3
+      },
+      'fireball': {
+        cooldown: 2,
+        targetType: 'single_enemy',
+        effectType: 'magical_damage',
+        magnitude: 1.3,
+        statusEffectChance: 40,
+        statusEffect: 'ignite',
+        duration: 3
+      }
+    };
+    return abilities[abilityId] || {
+      cooldown: 0,
+      targetType: 'self',
+      effectType: 'buff',
+      magnitude: 1.0,
+      statusEffectChance: 0,
+      duration: 1
+    };
+  }
+
   private renderCombatActions(): string {
     const combat = gameStore.combatManager!;
     
@@ -466,7 +583,7 @@ export class GameLayout {
         </div>
         
         <div class="action-row secondary-actions">
-          <!-- TODO: Implement abilities display -->
+          ${this.renderAbilityButtons()}
         </div>
         
         <div class="action-row utility-actions">
@@ -798,12 +915,24 @@ export class GameLayout {
     if (!abilityId) return
 
     try {
+      // Get ability data from our local methods
+      const manaCost = this.getAbilityManaCost(abilityId);
+      const abilityData = this.getAbilityData(abilityId);
+      
       const action = {
-        type: 'TOGGLE_ABILITY' as const,
+        type: 'CAST_ABILITY' as const,
         abilityId: abilityId,
+        targetId: undefined, // For now, no specific target
+        manaCost: manaCost,
+        cooldown: abilityData.cooldown,
+        targetType: abilityData.targetType,
+        effectType: abilityData.effectType,
+        magnitude: abilityData.magnitude,
+        statusEffectChance: abilityData.statusEffectChance,
+        statusEffect: abilityData.statusEffect,
+        duration: abilityData.duration,
         isValid: true,
         executionOrder: 1,
-        manaCost: 0,
         canBeCountered: true
       }
       combat.executePlayerAction(action as any)

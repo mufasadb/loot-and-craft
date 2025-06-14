@@ -460,12 +460,91 @@ export class GameStore {
         maxStackSize: 1,
         isEquipped: false,
         itemLevel: 1
+      },
+      {
+        id: 'ice-armor-ring',
+        name: 'Ice Armor Ring',
+        type: 'equipment',
+        rarity: 'magic',
+        level: 1,
+        iconPath: '/assets/ui/icons/ring.svg',
+        description: 'A frigid ring that can conjure protective ice.',
+        equipment: {
+          slot: 'ring1',
+          baseType: 'ring',
+          inherentStats: { armor: 2, maxMana: 20, maxEnergyShield: 8 },
+          grantedAbilities: ['ice_armor'],
+          levelRequirement: 4
+        },
+        affixes: [],
+        stackSize: 1,
+        maxStackSize: 1,
+        isEquipped: false,
+        itemLevel: 1
+      },
+      {
+        id: 'flame-blade-sword',
+        name: 'Flame Blade Sword',
+        type: 'equipment',
+        rarity: 'magic',
+        level: 1,
+        iconPath: '/assets/ui/icons/sword.svg',
+        description: 'A magical sword that can be ignited with flames.',
+        equipment: {
+          slot: 'weapon',
+          baseType: 'sword',
+          inherentStats: { damage: 15, maxMana: 15, initiative: 1 },
+          grantedAbilities: ['basic_attack', 'flame_blade'],
+          levelRequirement: 3
+        },
+        affixes: [],
+        stackSize: 1,
+        maxStackSize: 1,
+        isEquipped: false,
+        itemLevel: 1
+      },
+      {
+        id: 'wind-step-boots',
+        name: 'Wind Step Boots',
+        type: 'equipment',
+        rarity: 'magic',
+        level: 1,
+        iconPath: '/assets/ui/icons/boots.svg',
+        description: 'Enchanted boots that allow swift movement.',
+        equipment: {
+          slot: 'boots',
+          baseType: 'light',
+          inherentStats: { armor: 4, maxHealth: 8, maxMana: 10, initiative: 4 },
+          grantedAbilities: ['wind_step'],
+          levelRequirement: 3
+        },
+        affixes: [],
+        stackSize: 1,
+        maxStackSize: 1,
+        isEquipped: false,
+        itemLevel: 1
       }
     ]
 
     // Add items to inventory
     testItems.forEach(item => {
       player.addToInventory(item as any)
+    })
+    
+    // Auto-equip some ability items for testing
+    const abilityItems = testItems.filter(item => 
+      item.name.includes('Ice Armor') || 
+      item.name.includes('Flame Blade') || 
+      item.name.includes('Wind Step')
+    )
+    
+    abilityItems.forEach(item => {
+      if (item.equipment) {
+        // Remove from inventory first
+        player.removeFromInventory(item.id)
+        // Then equip it
+        player.equipItem(item as any, item.equipment.slot as any)
+      }
     })
   }
 

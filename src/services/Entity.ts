@@ -109,6 +109,11 @@ export abstract class BaseEntity implements IEntity {
     }
   }
 
+  takeMana(amount: number): void {
+    if (amount <= 0) return;
+    this.currentMana = Math.max(0, this.currentMana - amount);
+  }
+
   addEffect(effect: CombatEffect): void {
     if (effect.onApply) {
       effect.onApply(this.id);

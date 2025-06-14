@@ -6,6 +6,7 @@ import {
   PlayerAction,
   AttackAction,
   BlockAction,
+  CastAbilityAction,
   ToggleAbilityAction,
   MoveAction,
   EscapeAction,
@@ -515,6 +516,9 @@ export class CombatManager implements ICombatManager {
       case CombatAction.BLOCK:
         this.executeBlockAction(action as BlockAction);
         break;
+      case CombatAction.CAST_ABILITY:
+        this.executeCastAbilityAction(action as CastAbilityAction);
+        break;
       case CombatAction.TOGGLE_ABILITY:
         this.executeToggleAbilityAction(action as ToggleAbilityAction);
         break;
@@ -555,6 +559,111 @@ export class CombatManager implements ICombatManager {
     this.player.addEffect(blockEffect);
     
     this.addLogEntry('You raise your guard, doubling armor and reducing damage by 25%', 'action');
+  }
+
+  private executeCastAbilityAction(action: CastAbilityAction): void {
+    // Check mana cost
+    if (this.player.currentMana < action.manaCost) {
+      this.addLogEntry(`Not enough mana to cast ${action.abilityId}!`, 'error');
+      return;
+    }
+
+    // Deduct mana cost
+    this.player.takeMana(action.manaCost);
+
+    // Execute ability based on target type
+    switch (action.targetType) {
+      case 'self':
+        this.castSelfTargetedAbility(action);
+        break;
+      case 'single_enemy':
+        this.castEnemyTargetedAbility(action);
+        break;
+      case 'all_enemies':
+        this.castAreaAbility(action);
+        break;
+      default:
+        this.addLogEntry(`Unknown target type: ${action.targetType}`, 'error');
+    }
+  }
+
+  private castSelfTargetedAbility(action: CastAbilityAction): void {
+    this.addLogEntry(`You cast ${action.abilityId}!`, 'action');
+
+    // Apply status effect if specified
+    if (action.statusEffect && action.statusEffectChance > 0) {
+      const chance = Math.random() * 100;
+      if (chance <= action.statusEffectChance) {
+        // Apply the status effect to the player
+        this.effectProcessor.applyStatusEffect(
+          this.player.id,
+          action.statusEffect,
+          action.duration || 3
+        );
+        this.addLogEntry(`${action.statusEffect} effect applied!`, 'buff');
+      }
+    }
+  }
+
+  private castEnemyTargetedAbility(action: CastAbilityAction): void {
+    // Find target enemy (for now, target first alive enemy)
+    const target = this.enemies.find(e => e.currentHealth > 0);
+    if (!target) {
+      this.addLogEntry('No valid targets!', 'error');
+      return;
+    }
+
+    this.addLogEntry(`You cast ${action.abilityId} at ${target.name}!`, 'action');
+
+    // Calculate damage if it's a damage ability
+    if (action.effectType === 'magical_damage' || action.effectType === 'damage') {
+      const baseDamage = this.player.computedStats.damage * action.magnitude;
+      const finalDamage = Math.max(1, baseDamage - target.computedStats.armor);
+      
+      target.takeDamage(finalDamage);
+      this.addLogEntry(`${target.name} takes ${finalDamage} damage!`, 'damage');
+
+      // Apply status effect if specified
+      if (action.statusEffect && action.statusEffectChance > 0) {
+        const chance = Math.random() * 100;
+        if (chance <= action.statusEffectChance) {
+          this.effectProcessor.applyStatusEffect(
+            target.id,
+            action.statusEffect,
+            action.duration || 3
+          );
+          this.addLogEntry(`${target.name} is affected by ${action.statusEffect}!`, 'debuff');
+        }
+      }
+    }
+  }
+
+  private castAreaAbility(action: CastAbilityAction): void {
+    this.addLogEntry(`You cast ${action.abilityId} affecting all enemies!`, 'action');
+
+    for (const enemy of this.enemies.filter(e => e.currentHealth > 0)) {
+      // Calculate damage if it's a damage ability
+      if (action.effectType === 'magical_damage' || action.effectType === 'damage') {
+        const baseDamage = this.player.computedStats.damage * action.magnitude;
+        const finalDamage = Math.max(1, baseDamage - enemy.computedStats.armor);
+        
+        enemy.takeDamage(finalDamage);
+        this.addLogEntry(`${enemy.name} takes ${finalDamage} damage!`, 'damage');
+      }
+
+      // Apply status effect if specified
+      if (action.statusEffect && action.statusEffectChance > 0) {
+        const chance = Math.random() * 100;
+        if (chance <= action.statusEffectChance) {
+          this.effectProcessor.applyStatusEffect(
+            enemy.id,
+            action.statusEffect,
+            action.duration || 3
+          );
+          this.addLogEntry(`${enemy.name} is affected by ${action.statusEffect}!`, 'debuff');
+        }
+      }
+    }
   }
 
   private executeToggleAbilityAction(action: ToggleAbilityAction): void {

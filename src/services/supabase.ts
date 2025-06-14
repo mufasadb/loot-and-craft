@@ -184,6 +184,54 @@ export interface Database {
           dungeon_data?: Record<string, any> | null
         }
       }
+      project_knowledge: {
+        Row: {
+          id: string
+          project_name: string
+          version: string
+          component_structure: Record<string, any>
+          file_structure: Record<string, any>
+          architecture_notes: Record<string, any>
+          features_implemented: Record<string, any>
+          combat_system_details: Record<string, any>
+          ui_implementation: Record<string, any>
+          dependencies: Record<string, any>
+          build_config: Record<string, any>
+          deployment_info: Record<string, any>
+          last_updated: string
+          updated_by: string
+          change_description: string | null
+        }
+        Insert: {
+          project_name?: string
+          version?: string
+          component_structure?: Record<string, any>
+          file_structure?: Record<string, any>
+          architecture_notes?: Record<string, any>
+          features_implemented?: Record<string, any>
+          combat_system_details?: Record<string, any>
+          ui_implementation?: Record<string, any>
+          dependencies?: Record<string, any>
+          build_config?: Record<string, any>
+          deployment_info?: Record<string, any>
+          updated_by?: string
+          change_description?: string | null
+        }
+        Update: {
+          version?: string
+          component_structure?: Record<string, any>
+          file_structure?: Record<string, any>
+          architecture_notes?: Record<string, any>
+          features_implemented?: Record<string, any>
+          combat_system_details?: Record<string, any>
+          ui_implementation?: Record<string, any>
+          dependencies?: Record<string, any>
+          build_config?: Record<string, any>
+          deployment_info?: Record<string, any>
+          updated_by?: string
+          change_description?: string | null
+        }
+      }
     }
   }
 }
@@ -306,5 +354,39 @@ export class GameDataService {
 
   static onAuthStateChange(callback: (event: string, session: any) => void) {
     return supabase.auth.onAuthStateChange(callback)
+  }
+
+  // Project Knowledge Base methods
+  static async getProjectKnowledge(projectName: string = 'AOTV') {
+    const { data, error } = await supabase
+      .from('project_knowledge')
+      .select('*')
+      .eq('project_name', projectName)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('Error loading project knowledge:', error)
+      throw error
+    }
+
+    return data
+  }
+
+  static async updateProjectKnowledge(projectName: string, updates: Database['public']['Tables']['project_knowledge']['Update']) {
+    const { data, error } = await supabase
+      .from('project_knowledge')
+      .upsert({
+        project_name: projectName,
+        ...updates
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating project knowledge:', error)
+      throw error
+    }
+
+    return data
   }
 }

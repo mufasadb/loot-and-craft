@@ -52,7 +52,8 @@
       "Bash(echo:*)",
       "Bash(kill:*)",
       "mcp__browser-tools__getConsoleLogs",
-      "Bash(pgrep:*)"
+      "Bash(pgrep:*)",
+      "mcp__fetch__fetch"
     ],
     "deny": []
   }
